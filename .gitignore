@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environment
+venv/
+env/
+.env
+
+# Data files (too large for git)
+data/raw/*.csv
+data/processed/*.csv
+
+# Model artifacts (too large for git)
+models/*.pkl
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Results (regeneratable)
+results/*.csv
+
+# Misc
+*.log
+.gemini/
