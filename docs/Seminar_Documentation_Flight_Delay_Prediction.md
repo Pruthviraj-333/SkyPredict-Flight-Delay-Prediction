@@ -333,37 +333,162 @@ These results match real-world patterns:
 
 ---
 
-## 10. Limitations & Future Improvements
+## 10. Primary Model — Weather-Enhanced Predictions
 
-### Current Limitations
-- **No weather data** — Weather is the #1 cause of flight delays, but this fallback model doesn't use it
-- **Trained on one month** — More historical data would improve accuracy
-- **Can't predict exact delay duration** — Only predicts delayed (Yes/No), not "delayed by 45 minutes"
+### Why Add Weather?
 
-### What's Next — The Primary Model
-A **Primary Model** that combines flight data WITH weather data (temperature, precipitation, wind speed, visibility) is expected to significantly improve accuracy from ~72% to potentially **80-85%**.
+Weather is the **#1 cause of flight delays** — thunderstorms, fog, snow, and high winds cause far more delays than any other factor. Our fallback model was "blind" to weather. By adding real weather data, we expect significantly better performance.
 
-The fallback model we built today serves as a **safety net** — if the weather data service is ever unavailable, the system automatically switches to this model so predictions never stop.
+### How We Got Weather Data
+
+| Detail | Value |
+|---|---|
+| **Source** | Open-Meteo Historical Weather API (free, no API key) |
+| **Airports** | 346 (all airports in our flight data) |
+| **Period** | October 2025 (hourly data, same as flight data) |
+| **Records** | 257,424 hourly weather observations |
+
+### Weather Features Added (14 total)
+
+For **each flight**, we fetch weather at both the **origin airport** (at departure time) and **destination airport** (at estimated arrival time):
+
+| Feature | Origin | Destination |
+|---|---|---|
+| Temperature (°C) | ✓ | ✓ |
+| Wind Speed (km/h) | ✓ | ✓ |
+| Precipitation (mm) | ✓ | ✓ |
+| Visibility (meters) | ✓ | ✓ |
+| Cloud Cover (%) | ✓ | ✓ |
+| Weather Code (WMO) | ✓ | ✓ |
+| Bad Weather Flag | ✓ | ✓ |
+
+> **Bad Weather** = precipitation > 0.5mm **OR** visibility < 5km **OR** wind > 40 km/h
+
+### Primary Model: 10 Algorithm Comparison
+
+| Rank | Model | Accuracy | ROC-AUC | Delay Recall | Verdict |
+|:---:|---|:---:|:---:|:---:|---|
+| **1** | **🏆 XGBoost** | **73.3%** | **0.797** | **69.9%** | Best overall |
+| 2 | LightGBM | 72.6% | 0.792 | 69.9% | Very close 2nd |
+| 3 | Gradient Boosting | 82.2% | 0.777 | 21.9% | ⚠️ Accuracy trap |
+| 4 | Random Forest | 71.1% | 0.769 | 67.4% | Good balance |
+| 5 | Extra Trees | 67.1% | 0.751 | 69.9% | |
+| 6 | Decision Tree | 67.4% | 0.743 | 68.5% | |
+| 7 | Logistic Regression | 67.4% | 0.739 | 67.9% | |
+| 8 | Linear SVM | 67.3% | 0.739 | 68.1% | |
+| 9 | KNN | 81.0% | 0.719 | 27.1% | ⚠️ Accuracy trap |
+| 10 | AdaBoost | 79.7% | 0.706 | 0.0% | ❌ Useless |
+
+### Primary vs Fallback: Head-to-Head
+
+| Metric | Primary (Weather) | Fallback (No Weather) | Improvement |
+|---|:---:|:---:|:---:|
+| **Accuracy** | 73.3% | 72.5% | +0.8% |
+| **ROC-AUC** | **0.797** | 0.772 | **+0.025** |
+| **Delay Recall** | **69.9%** | 66.2% | **+3.7%** |
+| **Features** | 32 | 19 | +13 weather |
+
+### Top Weather Features by Importance
+
+```
+  Feature                     Rank    Importance
+  ─────────────────────────────────────────────
+  dest_wx_code (dest weather)   #7     0.0290
+  origin_precip (rain/snow)     #9     0.0252
+  dest_precip                   #14    0.0186
+  origin_wx_code                #15    0.0185
+```
+
+> **Key Insight:** The improvement is modest for October because it was a relatively mild weather month. In winter months with storms, the weather features would make a **much larger** difference.
 
 ---
 
-## 11. Technical Summary
+## 11. Dual-Model Architecture (Logic Gate)
+
+Our production system uses a **Logic Gate** that automatically picks the best model:
+
+```
+                 ┌──────────────────────────┐
+                 │    User submits flight    │
+                 └────────────┬─────────────┘
+                              │
+                 ┌────────────▼─────────────┐
+                 │  Fetch weather from       │
+                 │  Open-Meteo Forecast API  │
+                 └────────────┬─────────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │ Weather available? │
+                    └────┬──────────┬───┘
+                    YES  │          │  NO
+              ┌──────────▼──┐   ┌──▼──────────┐
+              │  PRIMARY     │   │  FALLBACK    │
+              │  MODEL       │   │  MODEL       │
+              │  (32 feats)  │   │  (19 feats)  │
+              │  73.3% acc   │   │  72.5% acc   │
+              │  0.797 AUC   │   │  0.772 AUC   │
+              └──────────────┘   └──────────────┘
+```
+
+### How It Works in Practice
+- **Flights within 16 days** → Weather forecast available → **Primary Model**
+- **Flights beyond 16 days** → No forecast → **Fallback Model**
+- **Unknown airports** → No coordinates → **Fallback Model**
+- The response tells the user which model was used
+
+---
+
+## 12. Real-Time Flight Tracking
+
+Our application also includes **live flight tracking** using the AviationStack API:
+
+| Feature | Detail |
+|---|---|
+| **Status** | Scheduled, In Flight, Landed, Cancelled, Diverted |
+| **Departure** | Airport, scheduled time, actual time, delay |
+| **Arrival** | Airport, scheduled time, estimated time, delay |
+| **Live Position** | Latitude, longitude, altitude, speed (when in air) |
+
+This complements the ML predictions with **real-time data** — users can check both the predicted delay risk and the actual live flight status.
+
+---
+
+## 13. Limitations & Future Improvements
+
+### Current Limitations
+- **Trained on one month** — More historical data (winter, summer) would improve accuracy
+- **Binary prediction only** — Predicts delayed (Yes/No), not exact delay duration
+- **Weather impact limited in mild months** — Bigger gains expected with winter data
+
+### Future Improvements
+- Train on 12+ months of data with seasonal weather variation
+- Add exact delay duration regression model
+- Add airport congestion as a real-time feature
+- Implement auto-retraining pipeline
+
+---
+
+## 14. Technical Summary
 
 | Item | Detail |
 |---|---|
 | **Data Source** | BTS TranStats (U.S. Government) |
-| **Training Data** | 481,256 flights (Oct 2025, 80% split) |
-| **Test Data** | 120,314 flights (Oct 2025, 20% split) |
-| **Out-of-Sample Test** | 200 flights (Nov 2025) |
+| **Weather Source** | Open-Meteo (free, no API key) |
+| **Training Data** | 601,570 flights × 32 features (Oct 2025) |
 | **Best Model** | XGBoost (Extreme Gradient Boosting) |
-| **Best ROC-AUC** | 0.772 |
-| **Test Accuracy** | 72.5% |
-| **Delay Detection Rate** | 66.2% |
-| **Models Compared** | 10 algorithms |
-| **Programming Language** | Python |
-| **Key Libraries** | XGBoost, scikit-learn, pandas |
+| **Primary Accuracy** | 73.3% (with weather) |
+| **Fallback Accuracy** | 72.5% (without weather) |
+| **Best ROC-AUC** | 0.797 |
+| **Delay Detection** | 69.9% |
+| **Models Compared** | 10 algorithms × 2 datasets |
+| **Architecture** | Dual-model with automatic Logic Gate |
+| **Flight Tracking** | AviationStack API (live status) |
+| **Backend** | FastAPI + Python |
+| **Frontend** | Next.js + React |
+| **Key Libraries** | XGBoost, scikit-learn, pandas, Open-Meteo |
 
 ---
 
-
 *Data source: U.S. Bureau of Transportation Statistics (BTS)*
+*Weather source: Open-Meteo Historical & Forecast API*
+

@@ -17,6 +17,8 @@ export interface PredictionResult {
     risk_level: string;
     distance_miles: number;
     flight_duration_minutes: number;
+    model_used: string;
+    weather_available: boolean;
 }
 
 export interface Stats {
@@ -117,4 +119,35 @@ export const api = {
         const data = await fetchJSON('/api/analytics/heatmap');
         return data.heatmap;
     },
+
+    getFlightStatus: async (flightIata: string): Promise<FlightStatusData> => {
+        const data = await fetchJSON(`/api/flight-status/${flightIata}`);
+        return data.flight_status;
+    },
 };
+
+export interface FlightStatusData {
+    flight_iata: string;
+    airline_name: string;
+    status: string;
+    departure: {
+        airport: string;
+        scheduled: string | null;
+        actual: string | null;
+        delay_minutes: number | null;
+    };
+    arrival: {
+        airport: string;
+        scheduled: string | null;
+        estimated: string | null;
+        delay_minutes: number | null;
+    };
+    live: {
+        latitude: number;
+        longitude: number;
+        altitude: number;
+        speed_horizontal: number;
+        is_ground: boolean;
+        updated: string;
+    } | null;
+}

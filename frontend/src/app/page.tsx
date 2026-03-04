@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Navbar from "@/components/Navbar";
-import { api, Airline, PredictionResult } from "@/lib/api";
+import { api, Airline, PredictionResult, FlightStatusData } from "@/lib/api";
 
 /* ── Animated arc gauge ─────────────────────────── */
 function ArcGauge({ value }: { value: number }) {
@@ -57,6 +57,10 @@ export default function Home() {
   const [result, setResult] = useState<PredictionResult | null>(null);
   const [err, setErr] = useState("");
   const resultRef = useRef<HTMLDivElement>(null);
+  const [flightNum, setFlightNum] = useState("");
+  const [trackLoading, setTrackLoading] = useState(false);
+  const [flightStatus, setFlightStatus] = useState<FlightStatusData | null>(null);
+  const [trackErr, setTrackErr] = useState("");
 
   useEffect(() => {
     api.getAirlines().then(setAirlines).catch(() => { });
@@ -79,6 +83,34 @@ export default function Home() {
   const riskClass = result ? `risk-${result.risk_level.toLowerCase()}` : "";
   const onTimePct = result ? result.on_time_probability * 100 : 0;
   const delayPct = result ? result.delay_probability * 100 : 0;
+
+  const trackFlight = async () => {
+    if (!flightNum.trim()) { setTrackErr("Enter a flight number."); return; }
+    setTrackLoading(true); setTrackErr(""); setFlightStatus(null);
+    try {
+      const status = await api.getFlightStatus(flightNum.trim());
+      setFlightStatus(status);
+    } catch (e: any) { setTrackErr(e.message || "Could not fetch flight status."); }
+    finally { setTrackLoading(false); }
+  };
+
+  const statusColor = (s: string) => {
+    switch (s) {
+      case "active": return { bg: "var(--sky-muted)", color: "var(--sky)", label: "In Flight" };
+      case "landed": return { bg: "var(--emerald-muted)", color: "var(--emerald)", label: "Landed" };
+      case "scheduled": return { bg: "var(--amber-muted)", color: "var(--amber)", label: "Scheduled" };
+      case "cancelled": return { bg: "var(--rose-muted)", color: "var(--rose)", label: "Cancelled" };
+      case "diverted": return { bg: "var(--rose-muted)", color: "var(--rose)", label: "Diverted" };
+      case "incident": return { bg: "var(--rose-muted)", color: "var(--rose)", label: "Incident" };
+      default: return { bg: "rgba(255,255,255,0.06)", color: "var(--text-secondary)", label: s || "Unknown" };
+    }
+  };
+
+  const formatTime = (t: string | null) => {
+    if (!t) return "--";
+    try { return new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+    catch { return t; }
+  };
 
   return (
     <>
@@ -205,6 +237,24 @@ export default function Home() {
                     : "This flight has a strong on-time track record for this route, carrier, and time slot. Have a great flight!"
                   }
                 </div>
+
+                {/* Model indicator */}
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  marginTop: 14, fontSize: 12, color: "var(--text-dim)",
+                }}>
+                  <span style={{
+                    display: "inline-flex", alignItems: "center", gap: 4,
+                    padding: "3px 10px", borderRadius: 5, fontSize: 11, fontWeight: 600,
+                    background: result.model_used === "primary" ? "var(--sky-muted)" : "rgba(255,255,255,0.04)",
+                    color: result.model_used === "primary" ? "var(--sky)" : "var(--text-dim)",
+                  }}>
+                    {result.model_used === "primary" ? "☁ Primary Model (Weather)" : "⚡ Fallback Model"}
+                  </span>
+                  {result.weather_available && (
+                    <span style={{ fontSize: 11, color: "var(--emerald)" }}>✓ Live weather data</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -212,8 +262,144 @@ export default function Home() {
 
         {/* Footer */}
         <p style={{ textAlign: "center", color: "var(--text-dim)", fontSize: 11.5, marginTop: 40 }}>
-          Model: XGBoost · Trained on BTS Oct 2025 · 601K flights · 72.5% test accuracy
+          Dual-Model: XGBoost Primary (weather) + Fallback · BTS Oct 2025 · 601K flights
         </p>
+
+        {/* ── LIVE FLIGHT TRACKING ── */}
+        <div style={{ marginTop: 48, borderTop: "1px solid var(--border)", paddingTop: 40 }}>
+          <div className="animate-enter" style={{ marginBottom: 24 }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "var(--amber)", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 6 }}>
+              Live Flight Tracking
+            </p>
+            <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.3, color: "var(--text-primary)" }}>
+              Track a flight in real-time
+            </h2>
+            <p style={{ marginTop: 6, fontSize: 13.5, color: "var(--text-secondary)" }}>
+              Enter a flight number to see its live status from AviationStack.
+            </p>
+          </div>
+
+          <div className="card animate-enter-d1" style={{ padding: "24px 28px" }}>
+            <div style={{ display: "flex", gap: 12, alignItems: "end" }}>
+              <div style={{ flex: 1, maxWidth: 260 }}>
+                <label className="field-label">Flight Number</label>
+                <input
+                  className="field-input"
+                  placeholder="e.g. AA100, DL402, UA1234"
+                  value={flightNum}
+                  onChange={e => setFlightNum(e.target.value.toUpperCase())}
+                  onKeyDown={e => e.key === "Enter" && trackFlight()}
+                  maxLength={10}
+                />
+              </div>
+              <button className="btn btn-sky" onClick={trackFlight} disabled={trackLoading} style={{ height: 42, minWidth: 120 }}>
+                {trackLoading ? <><span className="spin" /> Tracking…</> : "Track"}
+              </button>
+            </div>
+
+            {trackErr && (
+              <p style={{ marginTop: 12, fontSize: 13, color: "var(--rose)", background: "var(--rose-muted)", padding: "8px 14px", borderRadius: 8 }}>
+                {trackErr}
+              </p>
+            )}
+          </div>
+
+          {/* Flight Status Result */}
+          {flightStatus && (() => {
+            const sc = statusColor(flightStatus.status);
+            return (
+              <div className="card animate-enter" style={{ padding: 28, marginTop: 16 }}>
+                {/* Header */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+                  <div>
+                    <div style={{ fontFamily: "Space Grotesk", fontSize: 22, fontWeight: 700 }}>
+                      {flightStatus.flight_iata}
+                    </div>
+                    <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>{flightStatus.airline_name}</p>
+                  </div>
+                  <span style={{
+                    padding: "5px 14px", borderRadius: 6, fontSize: 12, fontWeight: 700,
+                    textTransform: "uppercase", letterSpacing: 0.4,
+                    background: sc.bg, color: sc.color,
+                  }}>
+                    {sc.label}
+                  </span>
+                </div>
+
+                {/* Departure / Arrival */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 16, alignItems: "center" }}>
+                  {/* Departure */}
+                  <div>
+                    <div style={{ fontSize: 11, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>Departure</div>
+                    <div style={{ fontFamily: "Space Grotesk", fontSize: 20, fontWeight: 700 }}>
+                      {flightStatus.departure.airport}
+                    </div>
+                    <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>
+                      Scheduled: {formatTime(flightStatus.departure.scheduled)}
+                    </div>
+                    {flightStatus.departure.actual && (
+                      <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+                        Actual: {formatTime(flightStatus.departure.actual)}
+                      </div>
+                    )}
+                    {flightStatus.departure.delay_minutes != null && flightStatus.departure.delay_minutes > 0 && (
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--rose)", marginTop: 4 }}>
+                        +{flightStatus.departure.delay_minutes} min delay
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Arrow */}
+                  <div style={{ textAlign: "center" }}>
+                    <svg width="60" height="20" viewBox="0 0 60 20">
+                      <line x1="0" y1="10" x2="48" y2="10" stroke="var(--text-dim)" strokeWidth="1.5" strokeDasharray="4 3" />
+                      <path d="M46 5l8 5-8 5" stroke="var(--sky)" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                    </svg>
+                  </div>
+
+                  {/* Arrival */}
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 11, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>Arrival</div>
+                    <div style={{ fontFamily: "Space Grotesk", fontSize: 20, fontWeight: 700 }}>
+                      {flightStatus.arrival.airport}
+                    </div>
+                    <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>
+                      Scheduled: {formatTime(flightStatus.arrival.scheduled)}
+                    </div>
+                    {flightStatus.arrival.estimated && (
+                      <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+                        Estimated: {formatTime(flightStatus.arrival.estimated)}
+                      </div>
+                    )}
+                    {flightStatus.arrival.delay_minutes != null && flightStatus.arrival.delay_minutes > 0 && (
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--rose)", marginTop: 4 }}>
+                        +{flightStatus.arrival.delay_minutes} min delay
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Live position */}
+                {flightStatus.live && (
+                  <div style={{
+                    marginTop: 20, padding: "14px 16px", borderRadius: 10,
+                    background: "var(--sky-muted)", border: "1px solid rgba(56,189,248,0.12)",
+                  }}>
+                    <div style={{ fontSize: 11, color: "var(--sky)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
+                      Live Position
+                    </div>
+                    <div style={{ display: "flex", gap: 24, fontSize: 13, color: "var(--text-secondary)" }}>
+                      <span>Lat: <strong style={{ color: "var(--text-primary)" }}>{flightStatus.live.latitude.toFixed(2)}°</strong></span>
+                      <span>Lon: <strong style={{ color: "var(--text-primary)" }}>{flightStatus.live.longitude.toFixed(2)}°</strong></span>
+                      <span>Alt: <strong style={{ color: "var(--text-primary)" }}>{Math.round(flightStatus.live.altitude).toLocaleString()} ft</strong></span>
+                      <span>Speed: <strong style={{ color: "var(--text-primary)" }}>{Math.round(flightStatus.live.speed_horizontal)} km/h</strong></span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </div>
       </div>
     </>
   );
