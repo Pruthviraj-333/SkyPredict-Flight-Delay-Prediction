@@ -119,7 +119,13 @@ async def get_airlines():
 @app.get("/api/airports")
 async def get_airports():
     airports = model_service.get_airports()
-    return {"airports": airports}
+    names = model_service.get_airport_names()
+    return {
+        "airports": [
+            {"code": code, "name": names.get(code, code)}
+            for code in airports
+        ]
+    }
 
 
 @app.post("/api/predict")

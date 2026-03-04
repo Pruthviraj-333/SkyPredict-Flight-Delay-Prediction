@@ -5,6 +5,11 @@ export interface Airline {
     name: string;
 }
 
+export interface Airport {
+    code: string;
+    name: string;
+}
+
 export interface PredictionResult {
     carrier: string;
     origin: string;
@@ -74,7 +79,7 @@ export const api = {
         return data.airlines;
     },
 
-    getAirports: async (): Promise<string[]> => {
+    getAirports: async (): Promise<Airport[]> => {
         const data = await fetchJSON('/api/airports');
         return data.airports;
     },

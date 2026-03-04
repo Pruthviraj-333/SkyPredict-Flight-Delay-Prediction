@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import Navbar from "@/components/Navbar";
-import { api, Airline, PredictionResult, FlightStatusData } from "@/lib/api";
+import AirportSearch from "@/components/AirportSearch";
+import { api, Airline, Airport, PredictionResult, FlightStatusData } from "@/lib/api";
 
 /* ── Animated arc gauge ─────────────────────────── */
 function ArcGauge({ value }: { value: number }) {
@@ -47,7 +48,7 @@ function ArcGauge({ value }: { value: number }) {
 /* ── Main page ──────────────────────────────────── */
 export default function Home() {
   const [airlines, setAirlines] = useState<Airline[]>([]);
-  const [airports, setAirports] = useState<string[]>([]);
+  const [airports, setAirports] = useState<Airport[]>([]);
   const [carrier, setCarrier] = useState("");
   const [origin, setOrigin] = useState("");
   const [dest, setDest] = useState("");
@@ -141,15 +142,23 @@ export default function Home() {
             </div>
             <div>
               <label className="field-label">From</label>
-              <input className="field-input" list="ol" placeholder="e.g. JFK" value={origin}
-                onChange={e => setOrigin(e.target.value.toUpperCase())} maxLength={4} />
-              <datalist id="ol">{airports.map(a => <option key={a} value={a} />)}</datalist>
+              <AirportSearch
+                airports={airports}
+                value={origin}
+                onChange={setOrigin}
+                placeholder="Type city or code"
+                id="origin"
+              />
             </div>
             <div>
               <label className="field-label">To</label>
-              <input className="field-input" list="dl" placeholder="e.g. LAX" value={dest}
-                onChange={e => setDest(e.target.value.toUpperCase())} maxLength={4} />
-              <datalist id="dl">{airports.map(a => <option key={a} value={a} />)}</datalist>
+              <AirportSearch
+                airports={airports}
+                value={dest}
+                onChange={setDest}
+                placeholder="Type city or code"
+                id="dest"
+              />
             </div>
           </div>
 

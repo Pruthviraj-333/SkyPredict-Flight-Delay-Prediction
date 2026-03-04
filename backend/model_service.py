@@ -126,6 +126,44 @@ class ModelService:
     def get_airports(self):
         return sorted(list(self.encoders['ORIGIN'].classes_))
 
+    def get_airport_names(self):
+        """Return mapping of IATA codes to 'City (CODE)' display names."""
+        mapping = {
+            'ABQ': 'Albuquerque', 'ANC': 'Anchorage', 'ATL': 'Atlanta',
+            'AUS': 'Austin', 'BDL': 'Hartford', 'BHM': 'Birmingham',
+            'BNA': 'Nashville', 'BOI': 'Boise', 'BOS': 'Boston',
+            'BTV': 'Burlington VT', 'BUF': 'Buffalo', 'BUR': 'Burbank',
+            'BWI': 'Baltimore', 'CAK': 'Akron', 'CHS': 'Charleston',
+            'CLE': 'Cleveland', 'CLT': 'Charlotte', 'CMH': 'Columbus OH',
+            'COS': 'Colorado Springs', 'CVG': 'Cincinnati',
+            'DAL': 'Dallas Love', 'DAY': 'Dayton', 'DCA': 'Washington Reagan',
+            'DEN': 'Denver', 'DFW': 'Dallas/Fort Worth', 'DSM': 'Des Moines',
+            'DTW': 'Detroit', 'ELP': 'El Paso', 'EWR': 'Newark',
+            'FAT': 'Fresno', 'FLL': 'Fort Lauderdale', 'GEG': 'Spokane',
+            'GRR': 'Grand Rapids', 'GSO': 'Greensboro', 'GSP': 'Greenville SC',
+            'HNL': 'Honolulu', 'HOU': 'Houston Hobby', 'IAD': 'Washington Dulles',
+            'IAH': 'Houston', 'ICT': 'Wichita', 'IND': 'Indianapolis',
+            'ISP': 'Long Island', 'JAX': 'Jacksonville', 'JFK': 'New York JFK',
+            'LAS': 'Las Vegas', 'LAX': 'Los Angeles', 'LGA': 'New York LaGuardia',
+            'LIT': 'Little Rock', 'MCI': 'Kansas City', 'MCO': 'Orlando',
+            'MDW': 'Chicago Midway', 'MEM': 'Memphis', 'MHT': 'Manchester NH',
+            'MIA': 'Miami', 'MKE': 'Milwaukee', 'MSN': 'Madison',
+            'MSP': 'Minneapolis', 'MSY': 'New Orleans', 'OAK': 'Oakland',
+            'OGG': 'Maui', 'OKC': 'Oklahoma City', 'OMA': 'Omaha',
+            'ONT': 'Ontario CA', 'ORD': 'Chicago O\'Hare', 'ORF': 'Norfolk',
+            'PBI': 'West Palm Beach', 'PDX': 'Portland OR', 'PHL': 'Philadelphia',
+            'PHX': 'Phoenix', 'PIT': 'Pittsburgh', 'PSP': 'Palm Springs',
+            'PVD': 'Providence', 'PWM': 'Portland ME', 'RDU': 'Raleigh-Durham',
+            'RIC': 'Richmond', 'RNO': 'Reno', 'ROC': 'Rochester NY',
+            'RSW': 'Fort Myers', 'SAN': 'San Diego', 'SAT': 'San Antonio',
+            'SAV': 'Savannah', 'SDF': 'Louisville', 'SEA': 'Seattle',
+            'SFO': 'San Francisco', 'SJC': 'San Jose', 'SJU': 'San Juan PR',
+            'SLC': 'Salt Lake City', 'SMF': 'Sacramento', 'SNA': 'Orange County',
+            'SRQ': 'Sarasota', 'STL': 'St. Louis', 'SYR': 'Syracuse',
+            'TPA': 'Tampa', 'TUL': 'Tulsa', 'TUS': 'Tucson',
+        }
+        return {code: f"{mapping.get(code, code)} ({code})" for code in self.get_airports()}
+
     def get_airline_names(self):
         mapping = {
             'AA': 'American Airlines', 'DL': 'Delta Air Lines',
