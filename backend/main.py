@@ -2,12 +2,13 @@
 SkyPredict Backend — FastAPI application for flight delay prediction.
 
 Endpoints:
-  GET  /api/health          → Service health check
-  GET  /api/airlines        → List of known airlines
-  GET  /api/airports        → List of known airports
-  POST /api/predict         → Single flight prediction
-  POST /api/batch-predict   → Batch flight predictions
-  GET  /api/stats           → Aggregate delay statistics
+  GET  /api/health              → Service health check
+  GET  /api/airlines            → List of known airlines
+  GET  /api/airports            → List of known airports
+  POST /api/predict             → Single flight prediction
+  POST /api/batch-predict       → Batch flight predictions
+  GET  /api/flight-status/{id}  → Live flight tracking
+  GET  /api/stats               → Aggregate delay statistics
   GET  /api/analytics/trends    → Delay by day of week
   GET  /api/analytics/routes    → Top delayed routes
   GET  /api/analytics/heatmap   → Hour × Day heatmap
@@ -26,7 +27,12 @@ from typing import List, Optional
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE_DIR)
 
+# Load .env
+from dotenv import load_dotenv
+load_dotenv(os.path.join(BASE_DIR, ".env"))
+
 from backend.model_service import ModelService
+from backend.flight_tracker import FlightTracker
 
 # Initialize app
 app = FastAPI(
@@ -48,14 +54,17 @@ app.add_middleware(
 MODELS_DIR = os.path.join(BASE_DIR, "models")
 DATA_DIR = os.path.join(BASE_DIR, "data")
 model_service: Optional[ModelService] = None
+flight_tracker: Optional[FlightTracker] = None
 
 
 @app.on_event("startup")
 async def startup():
-    global model_service
+    global model_service, flight_tracker
     print("[INFO] Loading ML model and data...")
     model_service = ModelService(MODELS_DIR, DATA_DIR)
+    flight_tracker = FlightTracker()
     print(f"[INFO] Model loaded. {len(model_service.get_airlines())} airlines, {len(model_service.get_airports())} airports.")
+    print(f"[INFO] Flight tracking: {'enabled' if flight_tracker.is_available() else 'disabled (no API key)'}")
 
 
 # ─── Request/Response Models ────────────────────────────────────
@@ -79,7 +88,21 @@ async def health():
         "status": "healthy",
         "model_loaded": model_service is not None,
         "model_type": "XGBoost Fallback Model",
+        "flight_tracking": flight_tracker.is_available() if flight_tracker else False,
     }
+
+
+@app.get("/api/flight-status/{flight_iata}")
+async def get_flight_status(flight_iata: str):
+    """Get live flight status from AviationStack."""
+    if not flight_tracker or not flight_tracker.is_available():
+        raise HTTPException(status_code=503, detail="Flight tracking not available (no API key)")
+    result = flight_tracker.get_flight_status(flight_iata)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Flight not found")
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return {"flight_status": result}
 
 
 @app.get("/api/airlines")

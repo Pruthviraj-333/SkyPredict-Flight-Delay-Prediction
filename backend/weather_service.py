@@ -60,7 +60,7 @@ def get_weather_for_airport(airport: str, target_date: str, target_hour: int) ->
             "timezone": "UTC",
         }
 
-        resp = requests.get(FORECAST_URL, params=params, timeout=8)
+        resp = requests.get(FORECAST_URL, params=params, timeout=5)
         if resp.status_code != 200:
             return None
 
@@ -79,6 +79,12 @@ def get_weather_for_airport(airport: str, target_date: str, target_hour: int) ->
             "weather_code": hourly.get("weather_code", [None])[target_hour],
         }
 
+    except requests.exceptions.Timeout:
+        print(f"[WARN] Weather API timeout for {airport} — falling back to base model")
+        return None
+    except requests.exceptions.ConnectionError:
+        print(f"[WARN] Weather API unreachable for {airport} — falling back to base model")
+        return None
     except Exception:
         return None
 

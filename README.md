@@ -1,61 +1,79 @@
 # SkyPredict — Flight Delay Prediction System
 
-A full-stack web application that predicts flight delays using machine learning, trained on 600K+ real U.S. domestic flights from the Bureau of Transportation Statistics.
+A full-stack web application that predicts flight delays using machine learning, trained on 600K+ real U.S. domestic flights from the Bureau of Transportation Statistics. Features a **dual-model architecture** with real-time weather integration and live flight tracking.
+
+## Features
+
+- 🔮 **Delay Predictions** — ML-powered delay probability with risk levels
+- 🌦️ **Weather-Enhanced** — Real-time weather data boosts accuracy via dual-model logic gate
+- ✈️ **Live Flight Tracking** — Track any flight's status via AviationStack API
+- 📊 **Staff Dashboard** — Analytics with charts, carrier rankings, and route insights
 
 ## Project Structure
 
 ```
 forecasting-flight-delay/
 │
-├── backend/                    # FastAPI REST API
-│   ├── main.py                 # Server entry point (11 endpoints)
-│   ├── model_service.py        # ML model wrapper service
-│   ├── requirements.txt        # Python dependencies
+├── backend/                        # FastAPI REST API
+│   ├── main.py                     # Server entry point (12 endpoints)
+│   ├── model_service.py            # Dual-model wrapper (primary + fallback)
+│   ├── weather_service.py          # Open-Meteo weather forecast service
+│   ├── flight_tracker.py           # AviationStack live flight tracking
+│   ├── requirements.txt            # Python dependencies
 │   └── __init__.py
 │
-├── frontend/                   # Next.js web application
+├── frontend/                       # Next.js web application
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── layout.tsx      # Root layout + metadata
-│   │   │   ├── globals.css     # Design system
-│   │   │   ├── page.tsx        # Passenger prediction page
-│   │   │   └── staff/
-│   │   │       └── page.tsx    # Staff analytics dashboard
+│   │   │   ├── page.tsx            # Passenger prediction + flight tracking
+│   │   │   ├── staff/page.tsx      # Staff analytics dashboard
+│   │   │   ├── layout.tsx          # Root layout + metadata
+│   │   │   └── globals.css         # Design system
 │   │   ├── components/
-│   │   │   └── Navbar.tsx      # Navigation bar
+│   │   │   └── Navbar.tsx          # Navigation bar
 │   │   └── lib/
-│   │       └── api.ts          # Type-safe API client
+│   │       └── api.ts              # Type-safe API client
 │   └── package.json
 │
-├── ml/                         # Machine learning pipeline
+├── ml/                             # Machine learning pipeline
 │   └── scripts/
-│       ├── download_data.py    # BTS data downloader
-│       ├── preprocess.py       # Feature engineering
-│       ├── train_fallback_model.py  # XGBoost model training
-│       ├── compare_models.py   # 10-algorithm comparison
-│       ├── predict.py          # CLI prediction tool
-│       ├── test_november.py    # Out-of-sample test
-│       └── test_app.py         # End-to-end app tests
+│       ├── download_data.py        # BTS data downloader
+│       ├── preprocess.py           # Feature engineering
+│       ├── train_fallback_model.py # Fallback model training (19 features)
+│       ├── compare_models.py       # 10-algorithm comparison (fallback)
+│       ├── airport_coords.py       # Airport lat/lon lookup
+│       ├── fetch_weather.py        # Open-Meteo historical weather fetch
+│       ├── build_weather_dataset.py # Merge flights + weather + train primary
+│       ├── compare_primary_models.py # 10-algorithm comparison (primary)
+│       ├── predict.py              # CLI prediction tool
+│       ├── test_november.py        # Out-of-sample test
+│       └── test_logic_gate.py      # Dual-model logic gate test
 │
 ├── data/
-│   ├── raw/                    # Raw BTS CSV files
-│   └── processed/              # Cleaned feature datasets
+│   ├── raw/                        # Raw BTS CSV files
+│   ├── processed/                  # Cleaned feature datasets
+│   ├── weather/                    # Historical weather data
+│   └── airport_coordinates.csv     # Airport lat/lon for weather
 │
-├── models/                     # Trained model artifacts
-│   ├── fallback_model.pkl      # XGBoost model
-│   ├── encoders.pkl            # Label encoders
-│   ├── aggregate_stats.pkl     # Historical delay rates
-│   └── model_config.pkl        # Feature configuration
+├── models/                         # Trained model artifacts
+│   ├── primary_model.pkl           # XGBoost with weather (32 features)
+│   ├── primary_model_config.pkl    # Primary model config
+│   ├── fallback_model.pkl          # XGBoost without weather (19 features)
+│   ├── encoders.pkl                # Label encoders
+│   ├── aggregate_stats.pkl         # Historical delay rates
+│   └── model_config.pkl            # Fallback model config
 │
-├── results/                    # Evaluation results
-│   ├── model_comparison.csv    # 10-algorithm comparison
+├── results/                        # Evaluation results
+│   ├── primary_model_comparison.csv
+│   ├── primary_vs_fallback.csv
+│   ├── model_comparison.csv
 │   └── november_2025_test_results.csv
 │
-├── docs/                       # Documentation
+├── docs/                           # Documentation
 │   └── Seminar_Documentation_Flight_Delay_Prediction.md
 │
-├── venv/                       # Python virtual environment
-├── requirements.txt            # Python dependencies
+├── .env                            # API keys (not committed)
+├── requirements.txt                # Python dependencies
 ├── README.md
 └── .gitignore
 ```
@@ -91,27 +109,36 @@ npm run dev
 | Staff Dashboard | http://localhost:3000/staff |
 | API Docs | http://localhost:8000/docs |
 
-## ML Pipeline
+## Dual-Model Architecture
 
-Run these scripts in order from the `ml/scripts/` directory to rebuild the model:
-
-```bash
-python ml/scripts/download_data.py          # Download BTS flight data
-python ml/scripts/preprocess.py             # Feature engineering
-python ml/scripts/train_fallback_model.py   # Train XGBoost model
-python ml/scripts/compare_models.py         # Compare 10 algorithms
-python ml/scripts/test_november.py          # Out-of-sample test
+```
+User Request → Fetch Weather (Open-Meteo) → Weather Available?
+                                              ├─ YES → Primary Model (73.3% acc, 0.797 AUC)
+                                              └─ NO  → Fallback Model (72.5% acc, 0.772 AUC)
 ```
 
-## Model Performance
+| Model | Features | Accuracy | ROC-AUC | Delay Recall |
+|---|---|---|---|---|
+| **Primary** (weather) | 32 | 73.3% | 0.797 | 69.9% |
+| Fallback (no weather) | 19 | 72.5% | 0.772 | 66.2% |
 
-| Metric | October Test | November (Unseen) |
-|---|---|---|
-| Accuracy | 72.5% | 65.0% |
-| ROC-AUC | 0.772 | 0.616 |
-| Delay Recall | 66.2% | 43.9% |
+XGBoost was selected as the best algorithm after comparing 10 ML models on both datasets.
 
-XGBoost was selected as the best algorithm after comparing 10 ML models.
+## ML Pipeline
+
+```bash
+# Fallback model
+python ml/scripts/download_data.py
+python ml/scripts/preprocess.py
+python ml/scripts/train_fallback_model.py
+python ml/scripts/compare_models.py
+
+# Primary model (weather-enhanced)
+python ml/scripts/airport_coords.py
+python ml/scripts/fetch_weather.py
+python ml/scripts/build_weather_dataset.py
+python ml/scripts/compare_primary_models.py
+```
 
 ## Tech Stack
 
@@ -119,19 +146,21 @@ XGBoost was selected as the best algorithm after comparing 10 ML models.
 |---|---|
 | Backend | FastAPI (Python) |
 | Frontend | Next.js 16, TypeScript |
-| Styling | Tailwind CSS 4 |
+| Styling | Vanilla CSS (custom design system) |
 | Charts | Recharts |
-| ML Model | XGBoost |
+| ML Model | XGBoost (dual-model) |
+| Weather | Open-Meteo API (free, no key) |
+| Flight Tracking | AviationStack API |
 | Data Source | BTS TranStats (U.S. Government) |
 
 ## API Endpoints
 
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/api/health` | Health check |
+| GET | `/api/health` | Health check + model status |
 | GET | `/api/airlines` | List airlines |
 | GET | `/api/airports` | List airports |
-| POST | `/api/predict` | Predict single flight |
+| POST | `/api/predict` | Predict flight delay (auto-selects model) |
 | POST | `/api/batch-predict` | Batch predictions |
 | GET | `/api/stats` | Aggregate statistics |
 | GET | `/api/analytics/trends` | Delay by day of week |
@@ -139,3 +168,8 @@ XGBoost was selected as the best algorithm after comparing 10 ML models.
 | GET | `/api/analytics/carriers` | Delay by carrier |
 | GET | `/api/analytics/hours` | Delay by hour |
 | GET | `/api/analytics/heatmap` | Hour × Day heatmap |
+| GET | `/api/flight-status/{iata}` | Live flight tracking |
+
+## License
+
+MIT
