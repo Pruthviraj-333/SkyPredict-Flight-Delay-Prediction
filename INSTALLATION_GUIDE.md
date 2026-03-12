@@ -71,23 +71,43 @@ AVIATIONSTACK_API_KEY=your_api_key_here
 
 ## 🧠 ML Pipeline & Model Training
 
-If you want to replicate the model training process, run the following scripts in order from the root directory:
+To get the application running, you have two options:
 
-### Phase 1: Fallback Model (No Weather)
+### Option A: Replicate Model Training
+If you want to train the models from scratch using real data, run these scripts in order from the root directory:
+
+#### Phase 1: Fallback Model (No Weather)
 ```bash
 python ml/scripts/download_data.py          # Download raw BTS data
 python ml/scripts/preprocess.py             # Feature engineering
 python ml/scripts/train_fallback_model.py  # Train XGBoost fallback model
-python ml/scripts/compare_models.py       # Compare 10 ML algorithms
 ```
 
-### Phase 2: Primary Model (Weather-Enhanced)
+#### Phase 2: Primary Model (Weather-Enhanced)
 ```bash
 python ml/scripts/airport_coords.py        # Generate airport coordinates
 python ml/scripts/fetch_weather.py         # Fetch historical weather data
 python ml/scripts/build_weather_dataset.py # Merge flights + weather and train
-python ml/scripts/compare_primary_models.py # Compare primary model algorithms
 ```
+
+---
+
+### Option B: Use Pre-trained Models (Faster)
+If you don't want to train the models, request these files from the project owner and place them in the specified directories:
+
+**1. Essential Model Artifacts (Place in `models/`)**
+- `fallback_model.pkl`
+- `primary_model.pkl`
+- `encoders.pkl`
+- `aggregate_stats.pkl`
+- `model_config.pkl`
+- `primary_model_config.pkl`
+
+**2. Essential Data Artifacts (Place in `data/`)**
+- `airport_coordinates.csv` (Required for weather-related predictions)
+
+> [!TIP]
+> Using pre-trained models allows you to skip several hours of data processing and training.
 
 ---
 
