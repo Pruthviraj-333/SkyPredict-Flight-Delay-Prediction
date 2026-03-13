@@ -4,18 +4,50 @@ Model Service — Dual-Model Flight Delay Prediction.
 Loads both the primary (weather-enhanced) and fallback (no weather) XGBoost models.
 Logic Gate: Automatically uses the primary model when weather data is available,
             and falls back to the base model when weather is unavailable.
+
+v2: Updated feature construction to match enhanced 45-feature fallback model
+    and weather-extended primary model.
 """
 
 import os
+import math
 import pickle
 import numpy as np
 import pandas as pd
-from datetime import datetime
+from datetime import date as _date, datetime, timedelta
 from typing import Optional
 import warnings
 warnings.filterwarnings('ignore')
 
 from backend import weather_service
+
+# ============================================================
+# US HOLIDAYS  (for IS_HOLIDAY / NEAR_HOLIDAY features)
+# ============================================================
+_US_HOLIDAYS_RAW = {
+    (2024, 12, 24), (2024, 12, 25), (2024, 12, 31),
+    (2025,  1,  1), (2025,  1, 20), (2025,  2, 17),
+    (2025,  3, 14), (2025,  3, 18), (2025,  3, 21),
+    (2025,  5, 26), (2025,  7,  3), (2025,  7,  4), (2025,  7,  5),
+    (2025,  9,  1), (2025, 10, 13),
+    (2025, 11, 11), (2025, 11, 26), (2025, 11, 27), (2025, 11, 28),
+    (2025, 11, 29), (2025, 11, 30),
+    (2025, 12, 24), (2025, 12, 25), (2025, 12, 31),
+    (2026,  1,  1), (2026,  1, 19), (2026,  2, 16),
+    (2026,  5, 25), (2026,  7,  3), (2026,  7,  4),
+    (2026,  9,  7), (2026, 11, 11), (2026, 11, 26), (2026, 12, 24), (2026, 12, 25),
+}
+_NEAR_HOLIDAY = set()
+for _yy, _mm, _dd in _US_HOLIDAYS_RAW:
+    for _delta in range(-3, 4):
+        try:
+            _dt = _date(_yy, _mm, _dd) + timedelta(days=_delta)
+            _NEAR_HOLIDAY.add((_dt.year, _dt.month, _dt.day))
+        except Exception:
+            pass
+
+_SEASON_MAP = {12: 0, 1: 0, 2: 0, 3: 1, 4: 1, 5: 1,
+               6: 2, 7: 2, 8: 2, 9: 3, 10: 3, 11: 3}
 
 
 class PredictionResult:
@@ -254,86 +286,184 @@ class ModelService:
     # ─── Prediction ───────────────────────────────────────────
 
     def _build_base_features(self, carrier, origin, dest, date_str, dep_time):
-        """Build the 19 base features used by both models."""
+        """
+        Build the enhanced 45-feature vector for both fallback and primary models (v2).
+        Falls back gracefully to 0 for any feature not computable from inputs.
+        """
         carrier = carrier.upper().strip()
-        origin = origin.upper().strip()
-        dest = dest.upper().strip()
+        origin  = origin.upper().strip()
+        dest    = dest.upper().strip()
 
-        date = datetime.strptime(date_str, '%Y-%m-%d')
-        month = date.month
-        day_of_month = date.day
-        day_of_week = date.isoweekday()
-        is_weekend = 1 if day_of_week in [6, 7] else 0
+        dt           = datetime.strptime(date_str, '%Y-%m-%d')
+        month        = dt.month
+        day_of_month = dt.day
+        day_of_week  = dt.isoweekday()   # 1=Mon … 7=Sun
+        year         = dt.year
+        is_weekend   = 1 if day_of_week in [6, 7] else 0
 
         dep_hour = int(dep_time[:2]) if len(dep_time) >= 2 else 0
         dep_hour = min(max(dep_hour, 0), 23)
 
-        if dep_hour <= 5: time_block = 0
-        elif dep_hour <= 8: time_block = 1
-        elif dep_hour <= 11: time_block = 2
-        elif dep_hour <= 14: time_block = 3
-        elif dep_hour <= 17: time_block = 4
-        elif dep_hour <= 20: time_block = 5
-        else: time_block = 6
+        # Route info (distance / elapsed time)
+        route_info   = self.route_lookup.get((origin, dest), {})
+        distance     = float(route_info.get('DISTANCE', 0))
+        elapsed_time = float(route_info.get('CRS_ELAPSED_TIME', 0))
+        arr_hour     = int((dep_hour + elapsed_time / 60)) % 24 if elapsed_time > 0 else (dep_hour + 2) % 24
 
-        # Encode categoricals
-        carrier_enc = self.encoders['CARRIER'].transform([carrier])[0] if carrier in self.encoders['CARRIER'].classes_ else 0
-        origin_enc = self.encoders['ORIGIN'].transform([origin])[0] if origin in self.encoders['ORIGIN'].classes_ else 0
-        dest_enc = self.encoders['DEST'].transform([dest])[0] if dest in self.encoders['DEST'].classes_ else 0
+        # --- TIME_BLOCK (bins: -1,5,9,13,17,21,24 → labels 0-5) ---
+        if   dep_hour <= 5:  time_block = 0
+        elif dep_hour <= 9:  time_block = 1
+        elif dep_hour <= 13: time_block = 2
+        elif dep_hour <= 17: time_block = 3
+        elif dep_hour <= 21: time_block = 4
+        else:                time_block = 5
 
-        # Aggregate rates
-        default_rate = 0.203
-        carrier_delay_rate = self.agg_stats['carrier_delay_rate'].get(carrier, default_rate)
-        origin_delay_rate = self.agg_stats['origin_delay_rate'].get(origin, default_rate)
-        dest_delay_rate = self.agg_stats['dest_delay_rate'].get(dest, default_rate)
-        hour_delay_rate = self.agg_stats['hour_delay_rate'].get(dep_hour, default_rate)
-        dow_delay_rate = self.agg_stats['dow_delay_rate'].get(day_of_week, default_rate)
-        route_key = f"{origin}_{dest}"
-        route_delay_rate = self.agg_stats['route_delay_rate'].get(route_key, default_rate)
-
-        # Route info
-        route_info = self.route_lookup.get((origin, dest), {})
-        distance = route_info.get('DISTANCE', 0)
-        elapsed_time = route_info.get('CRS_ELAPSED_TIME', 0)
-
-        if distance <= 250: distance_group = 0
-        elif distance <= 500: distance_group = 1
+        # --- DISTANCE GROUP ---
+        if   distance <= 250:  distance_group = 0
+        elif distance <= 500:  distance_group = 1
         elif distance <= 1000: distance_group = 2
-        elif distance <= 1500: distance_group = 3
-        elif distance <= 2000: distance_group = 4
-        elif distance <= 3000: distance_group = 5
-        else: distance_group = 6
+        elif distance <= 2000: distance_group = 3
+        else:                  distance_group = 4
+
+        # --- DURATION BUCKET ---
+        if   elapsed_time <= 60:  dur_bucket = 0
+        elif elapsed_time <= 120: dur_bucket = 1
+        elif elapsed_time <= 180: dur_bucket = 2
+        elif elapsed_time <= 300: dur_bucket = 3
+        else:                     dur_bucket = 4
+
+        # --- SPEED PROXY ---
+        speed_proxy = distance / elapsed_time if elapsed_time > 0 else 0.0
+
+        # --- CYCLICAL ENCODINGS ---
+        month_sin = math.sin(2 * math.pi * month / 12)
+        month_cos = math.cos(2 * math.pi * month / 12)
+        hour_sin  = math.sin(2 * math.pi * dep_hour / 24)
+        hour_cos  = math.cos(2 * math.pi * dep_hour / 24)
+        dow_sin   = math.sin(2 * math.pi * day_of_week / 7)
+        dow_cos   = math.cos(2 * math.pi * day_of_week / 7)
+        dom_sin   = math.sin(2 * math.pi * day_of_month / 31)
+        dom_cos   = math.cos(2 * math.pi * day_of_month / 31)
+
+        # --- SEASON ---
+        season = _SEASON_MAP.get(month, 0)
+
+        # --- HOLIDAY FLAGS ---
+        is_holiday   = 1 if (year, month, day_of_month) in _US_HOLIDAYS_RAW else 0
+        near_holiday = 1 if (year, month, day_of_month) in _NEAR_HOLIDAY else 0
+
+        # --- PEAK TRAVEL INDICATORS ---
+        is_friday_evening  = 1 if (day_of_week == 5 and dep_hour >= 15) else 0
+        is_sunday_evening  = 1 if (day_of_week == 7 and dep_hour >= 15) else 0
+        is_monday_morning  = 1 if (day_of_week == 1 and dep_hour <= 9)  else 0
+        is_peak_hour       = 1 if dep_hour in [7, 8, 16, 17, 18] else 0
+        is_early_morning   = 1 if dep_hour <= 6 else 0
+        is_red_eye         = 1 if dep_hour >= 22 else 0
+
+        # --- ENCODE CATEGORICALS ---
+        carrier_enc = int(self.encoders['CARRIER'].transform([carrier])[0]) if carrier in self.encoders['CARRIER'].classes_ else 0
+        origin_enc  = int(self.encoders['ORIGIN'].transform([origin])[0])   if origin  in self.encoders['ORIGIN'].classes_  else 0
+        dest_enc    = int(self.encoders['DEST'].transform([dest])[0])        if dest    in self.encoders['DEST'].classes_    else 0
+
+        # --- AGGREGATE DELAY RATES ---
+        dr = 0.203  # global default
+        agg = self.agg_stats
+        carrier_dr  = agg.get('carrier_delay_rate', {}).get(carrier, dr)
+        origin_dr   = agg.get('origin_delay_rate',  {}).get(origin,  dr)
+        dest_dr     = agg.get('dest_delay_rate',    {}).get(dest,    dr)
+        hour_dr     = agg.get('hour_delay_rate',    {}).get(dep_hour, dr)
+        dow_dr      = agg.get('dow_delay_rate',     {}).get(day_of_week, dr)
+        season_dr   = agg.get('season_delay_rate',  {}).get(season,  dr)
+        tb_dr       = agg.get('time_block_delay_rate', {}).get(time_block, dr)
+        route_key   = f"{origin}_{dest}"
+        route_dr    = agg.get('route_delay_rate',   {}).get(route_key, dr)
+
+        # Level-2 interaction rates
+        co_key   = f"{carrier}_{origin}"
+        ch_key   = f"{carrier}_{dep_hour}"
+        cd_key   = f"{carrier}_{day_of_week}"
+        od_key   = f"{origin}_{day_of_week}"
+        oh_key   = f"{origin}_{dep_hour}"
+        rh_key   = f"{route_key}_{dep_hour}"
+        dh_key   = f"{dest}_{arr_hour}"
+
+        co_dr    = agg.get('carrier_origin_delay_rate', {}).get(co_key, dr)
+        ch_dr    = agg.get('carrier_hour_delay_rate',   {}).get(ch_key, dr)
+        cd_dr    = agg.get('carrier_dow_delay_rate',    {}).get(cd_key, dr)
+        od_dr    = agg.get('origin_dow_delay_rate',     {}).get(od_key, dr)
+        oh_dr    = agg.get('origin_hour_delay_rate',    {}).get(oh_key, dr)
+        rh_dr    = agg.get('route_hour_delay_rate',     {}).get(rh_key, dr)
+        dh_dr    = agg.get('dest_hour_delay_rate',      {}).get(dh_key, dr)
+
+        # --- CONGESTION PROXIES ---
+        oh_counts  = agg.get('origin_hour_congestion', {})
+        dh_counts  = agg.get('dest_hour_congestion',   {})
+        max_oh     = float(agg.get('congestion_max_origin', 1) or 1)
+        max_dh     = float(agg.get('congestion_max_dest',   1) or 1)
+        origin_cong = oh_counts.get(f"{origin}_{dep_hour}", 0) / max_oh
+        dest_cong   = dh_counts.get(f"{dest}_{arr_hour}",   0) / max_dh
+
+        # Default tail utilization (unknown at inference)
+        tail_today = 3  # median proxy
+
+        # ─── Full 45-feature fallback vector ───
+        fallback_feats = {
+            # Base temporal
+            'MONTH': month, 'DAY_OF_MONTH': day_of_month, 'DAY_OF_WEEK': day_of_week,
+            'DEP_HOUR': dep_hour, 'ARR_HOUR': arr_hour, 'IS_WEEKEND': is_weekend,
+            'TIME_BLOCK': time_block,
+            # Distance / duration
+            'DISTANCE': distance, 'CRS_ELAPSED_TIME': elapsed_time,
+            'DISTANCE_GROUP': distance_group, 'DURATION_BUCKET': dur_bucket,
+            'SPEED_PROXY': speed_proxy,
+            # Encoded categoricals
+            'CARRIER_ENCODED': carrier_enc, 'ORIGIN_ENCODED': origin_enc, 'DEST_ENCODED': dest_enc,
+            # Cyclical
+            'MONTH_SIN': month_sin, 'MONTH_COS': month_cos,
+            'HOUR_SIN': hour_sin,   'HOUR_COS': hour_cos,
+            'DOW_SIN': dow_sin,     'DOW_COS': dow_cos,
+            'DOM_SIN': dom_sin,     'DOM_COS': dom_cos,
+            # Season / holiday
+            'SEASON': season, 'IS_HOLIDAY': is_holiday, 'NEAR_HOLIDAY': near_holiday,
+            # Peak travel
+            'IS_FRIDAY_EVENING': is_friday_evening, 'IS_SUNDAY_EVENING': is_sunday_evening,
+            'IS_MONDAY_MORNING': is_monday_morning, 'IS_PEAK_HOUR': is_peak_hour,
+            'IS_EARLY_MORNING': is_early_morning, 'IS_RED_EYE': is_red_eye,
+            # Congestion
+            'ORIGIN_CONGESTION': origin_cong, 'DEST_CONGESTION': dest_cong,
+            # Tail utilization
+            'TAIL_FLIGHTS_TODAY': tail_today,
+            # Level-1 aggregate rates
+            'CARRIER_DELAY_RATE': carrier_dr, 'ORIGIN_DELAY_RATE': origin_dr,
+            'DEST_DELAY_RATE': dest_dr, 'HOUR_DELAY_RATE': hour_dr,
+            'DOW_DELAY_RATE': dow_dr, 'ROUTE_DELAY_RATE': route_dr,
+            'SEASON_DELAY_RATE': season_dr, 'TIME_BLOCK_DELAY_RATE': tb_dr,
+            # Level-2 interaction rates
+            'CARRIER_ORIGIN_DELAY_RATE': co_dr, 'CARRIER_HOUR_DELAY_RATE': ch_dr,
+            'CARRIER_DOW_DELAY_RATE': cd_dr, 'ORIGIN_DOW_DELAY_RATE': od_dr,
+            'ORIGIN_HOUR_DELAY_RATE': oh_dr, 'ROUTE_HOUR_DELAY_RATE': rh_dr,
+            'DEST_HOUR_DELAY_RATE': dh_dr,
+        }
+
+        # Legacy base_features dict for primary model (weather path)
+        base_feats = {
+            'MONTH': month, 'DAY_OF_WEEK': day_of_week,
+            'DAY_OF_MONTH': day_of_month, 'DEP_HOUR': dep_hour,
+            'IS_WEEKEND': is_weekend, 'TIME_BLOCK': time_block,
+            'DISTANCE': distance, 'DISTANCE_GROUP': distance_group,
+            'FLIGHT_DURATION': elapsed_time,
+            'CARRIER_ENC': carrier_enc, 'ORIGIN_ENC': origin_enc,
+            'DEST_ENC': dest_enc, 'CARRIER_DELAY_RATE': carrier_dr,
+            'ORIGIN_DELAY_RATE': origin_dr, 'DEST_DELAY_RATE': dest_dr,
+            'ROUTE_DELAY_RATE': route_dr, 'HOUR_DELAY_RATE': hour_dr,
+            'DOW_DELAY_RATE': dow_dr,
+            # Also pass new features so primary model can use them if needed
+            **{k: v for k, v in fallback_feats.items()}
+        }
 
         return {
-            "base_features": {
-                'MONTH': month, 'DAY_OF_WEEK': day_of_week,
-                'DAY_OF_MONTH': day_of_month, 'DEP_HOUR': dep_hour,
-                'IS_WEEKEND': is_weekend, 'TIME_BLOCK': time_block,
-                'DISTANCE': distance, 'DISTANCE_GROUP': distance_group,
-                'FLIGHT_DURATION': elapsed_time,
-                'CARRIER_ENC': carrier_enc, 'ORIGIN_ENC': origin_enc,
-                'DEST_ENC': dest_enc, 'CARRIER_DELAY_RATE': carrier_delay_rate,
-                'ORIGIN_DELAY_RATE': origin_delay_rate,
-                'DEST_DELAY_RATE': dest_delay_rate,
-                'ROUTE_DELAY_RATE': route_delay_rate,
-                'HOUR_DELAY_RATE': hour_delay_rate,
-                'DOW_DELAY_RATE': dow_delay_rate,
-            },
-            "fallback_features": {
-                'MONTH': month, 'DAY_OF_MONTH': day_of_month,
-                'DAY_OF_WEEK': day_of_week, 'DEP_HOUR': dep_hour,
-                'ARR_HOUR': (dep_hour + int(elapsed_time / 60)) % 24 if elapsed_time > 0 else (dep_hour + 2) % 24,
-                'IS_WEEKEND': is_weekend, 'TIME_BLOCK': time_block,
-                'DISTANCE': distance, 'CRS_ELAPSED_TIME': elapsed_time,
-                'DISTANCE_GROUP': distance_group,
-                'CARRIER_ENCODED': carrier_enc, 'ORIGIN_ENCODED': origin_enc,
-                'DEST_ENCODED': dest_enc, 'CARRIER_DELAY_RATE': carrier_delay_rate,
-                'ORIGIN_DELAY_RATE': origin_delay_rate,
-                'DEST_DELAY_RATE': dest_delay_rate,
-                'HOUR_DELAY_RATE': hour_delay_rate,
-                'DOW_DELAY_RATE': dow_delay_rate,
-                'ROUTE_DELAY_RATE': route_delay_rate,
-            },
+            "base_features":     base_feats,
+            "fallback_features": fallback_feats,
             "carrier": carrier, "origin": origin, "dest": dest,
             "dep_hour": dep_hour, "distance": distance,
             "elapsed_time": elapsed_time,
@@ -379,7 +509,10 @@ class ModelService:
 
         # ─── Fallback: No weather → use fallback model ───
         if model_used == "fallback":
-            features = pd.DataFrame([info["fallback_features"]])
+            fallback_feats = info["fallback_features"]
+            # Use the trained model's feature column list if available
+            fallback_cols = self.config.get('feature_columns', list(fallback_feats.keys()))
+            features = pd.DataFrame([fallback_feats]).reindex(columns=fallback_cols, fill_value=0)
             prediction = self.fallback_model.predict(features)[0]
             probability = self.fallback_model.predict_proba(features)[0]
 

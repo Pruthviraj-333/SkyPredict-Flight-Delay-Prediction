@@ -109,35 +109,47 @@ npm run dev
 | Staff Dashboard | http://localhost:3000/staff |
 | API Docs | http://localhost:8000/docs |
 
-## Dual-Model Architecture
+## Dual-Model Architecture (v2)
+
+The system utilizes a dual-model logic gate that selects the optimal model based on whether real-time weather data is available for the flight.
 
 ```
 User Request → Fetch Weather (Open-Meteo) → Weather Available?
-                                              ├─ YES → Primary Model (73.3% acc, 0.797 AUC)
-                                              └─ NO  → Fallback Model (72.5% acc, 0.772 AUC)
+                                              ├─ YES → Primary Model v2 (~78.1% acc, 0.780 AUC)
+                                              └─ NO  → Fallback Model v2 (~78.1% acc, 0.778 AUC)
 ```
 
 | Model | Features | Accuracy | ROC-AUC | Delay Recall |
 |---|---|---|---|---|
-| **Primary** (weather) | 32 | 73.3% | 0.797 | 69.9% |
-| Fallback (no weather) | 19 | 72.5% | 0.772 | 66.2% |
+| **Primary v2** (weather) | 60+ (45+ base) | **78.1%** | 0.780 | 72.0% |
+| **Fallback v2** (standard) | 45+ | **78.1%** | 0.778 | 69.1% |
 
-XGBoost was selected as the best algorithm after comparing 10 ML models on both datasets.
+### v2 Enhancements (March 2026)
+- **45+ Features**: Added cyclical time encodings, US holidays, airport congestion proxies, and multi-level interaction delay rates.
+- **Optuna Optimization**: Hyperparameters tuned via 75 TPE trials for maximum ROC-AUC.
+- **Temporal Splitting**: Realistic training on first 25 days of the month, testing on the last 6 days.
+- **Threshold Optimization**: Dynamically tuned classification thresholds for balanced Precision/Recall.
 
 ## ML Pipeline
 
+### Model Training (v2)
 ```bash
-# Fallback model
+# Recommended: Enhanced 1-month models with Optuna
+python ml/scripts/train_fallback_1month_v2.py
+python ml/scripts/train_primary_1month_v2.py
+```
+
+### Legacy Pipeline
+```bash
+# Fallback model (v1)
 python ml/scripts/download_data.py
 python ml/scripts/preprocess.py
 python ml/scripts/train_fallback_model.py
-python ml/scripts/compare_models.py
 
-# Primary model (weather-enhanced)
+# Primary model (v1)
 python ml/scripts/airport_coords.py
 python ml/scripts/fetch_weather.py
 python ml/scripts/build_weather_dataset.py
-python ml/scripts/compare_primary_models.py
 ```
 
 ## Tech Stack
