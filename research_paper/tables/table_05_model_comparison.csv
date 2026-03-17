@@ -1,0 +1,5 @@
+Model,Features,ROC-AUC,Accuracy,Recall,F1-Score,Weather
+"Fallback v1 (19 feat, 12-month)",19,0.7716,0.725,0.662,0.5839,No
+"Primary v1 (32 feat, weather, 12-month)",32,0.797,0.733,0.699,0.5155,Yes
+"Fallback v2 (45 feat, 1-month, no weather)",45,0.7783,0.7051,0.6914,0.535,No
+"Primary v2 (60+ feat, 1-month, weather)",60+,0.7797,0.6942,0.72,0.5361,Yes

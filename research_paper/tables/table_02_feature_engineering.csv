@@ -1,0 +1,21 @@
+Category,Features,Count
+Base Temporal,"MONTH, DAY_OF_MONTH, DAY_OF_WEEK",3
+Base Temporal,"DEP_HOUR, ARR_HOUR",2
+Base Temporal,IS_WEEKEND,1
+Base Temporal,TIME_BLOCK (6 bins),1
+Flight Characteristics,"DISTANCE, CRS_ELAPSED_TIME",2
+Flight Characteristics,"DISTANCE_GROUP (5 bins), DURATION_BUCKET (5 bins)",2
+Flight Characteristics,SPEED_PROXY,1
+Cyclical Encodings,"MONTH_SIN/COS, HOUR_SIN/COS",4
+Cyclical Encodings,"DOW_SIN/COS, DOM_SIN/COS",4
+Season & Holiday,SEASON (4 seasons),1
+Season & Holiday,"IS_HOLIDAY, NEAR_HOLIDAY (±3 days)",2
+Peak Travel Indicators,"IS_FRIDAY_EVENING, IS_SUNDAY_EVENING, IS_MONDAY_MORNING",3
+Peak Travel Indicators,"IS_PEAK_HOUR, IS_EARLY_MORNING, IS_RED_EYE",3
+Airport Congestion,"ORIGIN_CONGESTION, DEST_CONGESTION",2
+Tail Utilization,TAIL_FLIGHTS_TODAY,1
+L1 Aggregate Delay Rates,"CARRIER_DR, ORIGIN_DR, DEST_DR, HOUR_DR",4
+L1 Aggregate Delay Rates,"DOW_DR, ROUTE_DR, SEASON_DR, TIME_BLOCK_DR",4
+L2 Interaction Delay Rates,"CARRIER_ORIGIN_DR, CARRIER_HOUR_DR, CARRIER_DOW_DR",3
+L2 Interaction Delay Rates,"ORIGIN_DOW_DR, ORIGIN_HOUR_DR, ROUTE_HOUR_DR, DEST_HOUR_DR",4
+Categorical Encoded,"CARRIER_ENCODED, ORIGIN_ENCODED, DEST_ENCODED",3

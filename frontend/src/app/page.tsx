@@ -49,6 +49,7 @@ function ArcGauge({ value }: { value: number }) {
 export default function Home() {
   const [airlines, setAirlines] = useState<Airline[]>([]);
   const [airports, setAirports] = useState<Airport[]>([]);
+  const [dataReady, setDataReady] = useState(false);
   const [carrier, setCarrier] = useState("");
   const [origin, setOrigin] = useState("");
   const [dest, setDest] = useState("");
@@ -64,20 +65,36 @@ export default function Home() {
   const [trackErr, setTrackErr] = useState("");
 
   useEffect(() => {
-    api.getAirlines().then(setAirlines).catch(() => { });
-    api.getAirports().then(setAirports).catch(() => { });
+    Promise.all([
+      api.getAirlines().then(setAirlines).catch(() => { }),
+      api.getAirports().then(setAirports).catch(() => { }),
+    ]).finally(() => setDataReady(true));
     setDate(new Date().toISOString().split("T")[0]);
   }, []);
 
+  const today = new Date().toISOString().split("T")[0];
+
   const predict = async () => {
-    if (!carrier || !origin || !dest || !date || !depTime) { setErr("Fill in all fields."); return; }
+    // Field-level validation with specific messages
+    if (!carrier) { setErr("Please select an airline."); return; }
+    if (!origin) { setErr("Please select a departure airport."); return; }
+    if (!dest) { setErr("Please select a destination airport."); return; }
+    if (origin === dest) { setErr("Origin and destination cannot be the same airport."); return; }
+    if (!date) { setErr("Please select a travel date."); return; }
+    if (!depTime) { setErr("Please set a departure time."); return; }
     setLoading(true); setErr(""); setResult(null);
     try {
       const t = depTime.replace(":", "").padStart(4, "0");
-      const p = await api.predict({ carrier, origin, dest, date, dep_time: t });
+      const p = await api.predict({ carrier, origin: origin.toUpperCase(), dest: dest.toUpperCase(), date, dep_time: t });
       setResult(p);
       setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
-    } catch (e: any) { setErr(e.message || "Something went wrong."); }
+    } catch (e: any) {
+      const msg = e.message || "";
+      if (msg.includes("400")) setErr("Invalid flight details. Please check your inputs and try again.");
+      else if (msg.includes("500")) setErr("Server error — please try again in a moment.");
+      else if (msg.includes("fetch") || msg.includes("network")) setErr("Cannot connect to server. Is the backend running?");
+      else setErr(msg || "Something went wrong. Please try again.");
+    }
     finally { setLoading(false); }
   };
 
@@ -86,12 +103,20 @@ export default function Home() {
   const delayPct = result ? result.delay_probability * 100 : 0;
 
   const trackFlight = async () => {
-    if (!flightNum.trim()) { setTrackErr("Enter a flight number."); return; }
+    const num = flightNum.trim();
+    if (!num) { setTrackErr("Enter a flight number (e.g. AA100)."); return; }
+    if (num.length < 3) { setTrackErr("Flight number must be at least 3 characters (e.g. AA100)."); return; }
     setTrackLoading(true); setTrackErr(""); setFlightStatus(null);
     try {
-      const status = await api.getFlightStatus(flightNum.trim());
+      const status = await api.getFlightStatus(num);
       setFlightStatus(status);
-    } catch (e: any) { setTrackErr(e.message || "Could not fetch flight status."); }
+    } catch (e: any) {
+      const msg = e.message || "";
+      if (msg.includes("404")) setTrackErr(`Flight "${num}" not found. Check the flight number and try again.`);
+      else if (msg.includes("503")) setTrackErr("Flight tracking is temporarily unavailable. Please try again later.");
+      else if (msg.includes("fetch") || msg.includes("network")) setTrackErr("Cannot connect to server. Is the backend running?");
+      else setTrackErr(msg || "Could not fetch flight status. Please try again.");
+    }
     finally { setTrackLoading(false); }
   };
 
@@ -132,7 +157,12 @@ export default function Home() {
 
         {/* ── FORM ── */}
         <div className="card animate-enter-d1" style={{ padding: "28px 28px 24px", marginBottom: 24 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+          {!dataReady && (
+            <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-secondary)", fontSize: 13 }}>
+              <span className="spin" style={{ marginRight: 8 }} />Loading airlines and airports…
+            </div>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 14 }}>
             <div>
               <label className="field-label">Airline</label>
               <select className="field-input" value={carrier} onChange={e => setCarrier(e.target.value)}>
@@ -162,16 +192,17 @@ export default function Home() {
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 14, alignItems: "end" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, alignItems: "end" }}>
             <div>
               <label className="field-label">Date</label>
-              <input className="field-input" type="date" value={date} onChange={e => setDate(e.target.value)} />
+              <input className="field-input" type="date" value={date} min={today} onChange={e => setDate(e.target.value)} />
             </div>
             <div>
               <label className="field-label">Departure</label>
-              <input className="field-input" type="time" value={depTime} onChange={e => setDepTime(e.target.value)} />
+              <input className="field-input" type="time" value={depTime} onChange={e => setDepTime(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && predict()} />
             </div>
-            <button className="btn btn-sky" onClick={predict} disabled={loading} style={{ height: 42, minWidth: 150 }}>
+            <button className="btn btn-sky" onClick={predict} disabled={loading || !dataReady} style={{ height: 42, minWidth: 150 }}>
               {loading ? <><span className="spin" /> Checking…</> : "Check delay"}
             </button>
           </div>

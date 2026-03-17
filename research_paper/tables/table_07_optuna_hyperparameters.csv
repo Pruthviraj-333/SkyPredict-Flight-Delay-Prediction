@@ -1,0 +1,12 @@
+Hyperparameter,Search Range,Best Value
+n_estimators,100–800,750
+max_depth,4–12,6
+learning_rate,0.005–0.3 (log),0.02082
+subsample,0.5–1.0,0.8484
+colsample_bytree,0.4–1.0,0.8766
+colsample_bylevel,0.4–1.0,0.9181
+min_child_weight,1–30,29
+gamma,0–5.0,3.4174
+reg_alpha,1e-8–10 (log),0.004015
+reg_lambda,1e-8–10 (log),0.000002
+max_delta_step,0–5,4

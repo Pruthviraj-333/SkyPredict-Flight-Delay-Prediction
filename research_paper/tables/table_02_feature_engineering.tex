@@ -1,0 +1,31 @@
+\begin{table}[ht]
+\centering
+\caption{Feature Engineering Summary (45 Features)}
+\label{tab:features}
+\begin{tabular}{lll}
+\hline
+Category & Features & Count \\
+\hline
+Base Temporal & MONTH, DAY\_OF\_MONTH, DAY\_OF\_WEEK & 3 \\
+Base Temporal & DEP\_HOUR, ARR\_HOUR & 2 \\
+Base Temporal & IS\_WEEKEND & 1 \\
+Base Temporal & TIME\_BLOCK (6 bins) & 1 \\
+Flight Characteristics & DISTANCE, CRS\_ELAPSED\_TIME & 2 \\
+Flight Characteristics & DISTANCE\_GROUP (5 bins), DURATION\_BUCKET (5 bins) & 2 \\
+Flight Characteristics & SPEED\_PROXY & 1 \\
+Cyclical Encodings & MONTH\_SIN/COS, HOUR\_SIN/COS & 4 \\
+Cyclical Encodings & DOW\_SIN/COS, DOM\_SIN/COS & 4 \\
+Season & Holiday & SEASON (4 seasons) & 1 \\
+Season & Holiday & IS\_HOLIDAY, NEAR\_HOLIDAY (±3 days) & 2 \\
+Peak Travel Indicators & IS\_FRIDAY\_EVENING, IS\_SUNDAY\_EVENING, IS\_MONDAY\_MORNING & 3 \\
+Peak Travel Indicators & IS\_PEAK\_HOUR, IS\_EARLY\_MORNING, IS\_RED\_EYE & 3 \\
+Airport Congestion & ORIGIN\_CONGESTION, DEST\_CONGESTION & 2 \\
+Tail Utilization & TAIL\_FLIGHTS\_TODAY & 1 \\
+L1 Aggregate Delay Rates & CARRIER\_DR, ORIGIN\_DR, DEST\_DR, HOUR\_DR & 4 \\
+L1 Aggregate Delay Rates & DOW\_DR, ROUTE\_DR, SEASON\_DR, TIME\_BLOCK\_DR & 4 \\
+L2 Interaction Delay Rates & CARRIER\_ORIGIN\_DR, CARRIER\_HOUR\_DR, CARRIER\_DOW\_DR & 3 \\
+L2 Interaction Delay Rates & ORIGIN\_DOW\_DR, ORIGIN\_HOUR\_DR, ROUTE\_HOUR\_DR, DEST\_HOUR\_DR & 4 \\
+Categorical Encoded & CARRIER\_ENCODED, ORIGIN\_ENCODED, DEST\_ENCODED & 3 \\
+\hline
+\end{tabular}
+\end{table}

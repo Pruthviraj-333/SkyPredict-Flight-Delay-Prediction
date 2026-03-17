@@ -1,0 +1,22 @@
+\begin{table}[ht]
+\centering
+\caption{Optuna Best Hyperparameters (75 Trials, TPE, Best AUC=0.7952)}
+\label{tab:hparams}
+\begin{tabular}{lll}
+\hline
+Hyperparameter & Search Range & Best Value \\
+\hline
+n\_estimators & 100–800 & 750 \\
+max\_depth & 4–12 & 6 \\
+learning\_rate & 0.005–0.3 (log) & 0.02082 \\
+subsample & 0.5–1.0 & 0.8484 \\
+colsample\_bytree & 0.4–1.0 & 0.8766 \\
+colsample\_bylevel & 0.4–1.0 & 0.9181 \\
+min\_child\_weight & 1–30 & 29 \\
+gamma & 0–5.0 & 3.4174 \\
+reg\_alpha & 1e-8–10 (log) & 0.004015 \\
+reg\_lambda & 1e-8–10 (log) & 0.000002 \\
+max\_delta\_step & 0–5 & 4 \\
+\hline
+\end{tabular}
+\end{table}
