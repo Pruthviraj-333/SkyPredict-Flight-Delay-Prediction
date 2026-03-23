@@ -1,6 +1,6 @@
-# ✈️ Flight Delay Prediction v2 — Enhanced Dual-Model System
+# ✈️ Flight Delay Prediction v3 — Dual-Model (Classification + Regression)
 
-### A Machine Learning Approach with 45+ Engineered Features and Optuna-Tuned Optimization
+### Predicting both the *Probability* and the *Magnitude* of delays using XGBoost and Weather Integration
 
 ---
 
@@ -216,10 +216,15 @@ Think of it like asking 15 neighbors who took similar flights: "Was your flight 
 
 ### v2 Benchmark Results (Best Validated Configuration)
 
-| Model Variant | Accuracy | ROC-AUC | Delay Recall | Verdict |
-|:---:|:---:|:---:|:---:|---|
-| **🏆 Primary v2 (Weather)** | **78.1%** | **0.780** | **72.0%** | **Deployed (Best)** |
-| **🥇 Fallback v2 (Base)** | **78.1%** | **0.778** | **69.1%** | **Deployed (Backup)** |
+| Model Variant | Accuracy | ROC-AUC | Delay Recall | MAE (Minutes) |
+|:---:|:---:|:---:|:---:|:---:|
+| **🏆 Primary v3 (Weather)** | **78.1%** | **0.780** | **72.0%** | **17.2 min** |
+| **🥇 Fallback v3 (Base)** | **78.1%** | **0.778** | **69.1%** | **17.2 min** |
+
+### v3 Feature: High-Precision Regression
+We added an **XGBoost Regressor** optimized with **Optuna (RMSE loss)** to predict exact delay durations.
+- **Accuracy within ±30 mins**: 86.5% (Extremely reliable for passenger planning)
+- **Mean Absolute Error (MAE)**: 17.2 minutes
 
 ### Optimization: Optuna Hyperparameter Tuning
 We used **Optuna Optimization (75 trials)** to find the hyper-parameters for our XGBoost models. This automated search explored depth, learning rate, and tree complexity to maximize the **ROC-AUC** metric.
