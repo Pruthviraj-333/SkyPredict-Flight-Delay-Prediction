@@ -14,10 +14,10 @@ That's exactly what we're building. Our system takes basic flight information li
 - 🛬 **Arrival airport** (e.g., LAX Los Angeles)
 - 📅 **Date and time** of the flight
 
-...and predicts whether the flight is **likely to be on-time or delayed**.
+...and predicts both the **Probability** (Will it be delayed?) and the **Magnitude** (How many minutes?).
 
-> **What counts as "delayed"?**
-> A flight is classified as **delayed** if it arrives **15 or more minutes** after its scheduled arrival time. This is the official standard used by the U.S. Department of Transportation.
+> **The 15-Minute Standard**
+> A flight is officially **delayed** if it arrives **15 or more minutes** after its schedule. Our system handles this binary check first, then provides a precise time estimate.
 
 ---
 
@@ -406,38 +406,18 @@ The model finds that **temporal interactions** and **airport congestion** are mo
 
 ---
 
-## 11. Dual-Model Architecture (Logic Gate)
+## 11. Dual-Model Architecture (v3 Logic Gate)
 
-Our production system uses a **Logic Gate** that automatically picks the best model:
+Our production system uses a **Cascading Logic Gate**:
 
-```
-                 ┌──────────────────────────┐
-                 │    User submits flight    │
-                 └────────────┬─────────────┘
-                              │
-                 ┌────────────▼─────────────┐
-                 │  Fetch weather from       │
-                 │  Open-Meteo Forecast API  │
-                 └────────────┬─────────────┘
-                              │
-                    ┌─────────▼─────────┐
-                    │ Weather available? │
-                    └────┬──────────┬───┘
-                    YES  │          │  NO
-              ┌──────────▼──┐   ┌──▼──────────┐
-              │  PRIMARY     │   │  FALLBACK    │
-              │  MODEL v2    │   │  MODEL v2    │
-              │  (60+ feats) │   │  (45+ feats) │
-              │  78.1% acc   │   │  78.1% acc   │
-              │  0.780 AUC   │   │  0.778 AUC   │
-              └──────────────┘   └──────────────┘
-```
+1.  **Step 1**: Binary Classifier (Is delay > 15 mins?)
+2.  **Step 2**: If YES, Regressor (Exactly how many minutes?)
+
+This ensures we don't overestimate minor delays while maintaining high precision for major time-loss events.
 
 ### How It Works in Practice
-- **Flights within 16 days** → Weather forecast available → **Primary Model**
-- **Flights beyond 16 days** → No forecast → **Fallback Model**
-- **Unknown airports** → No coordinates → **Fallback Model**
-- The response tells the user which model was used
+- **Weather available** → **Primary v3 Pipeline** (Classifier + Regressor)
+- **No weather/Beyond 16 days** → **Fallback v3 Pipeline** (Base features only)
 
 ---
 
@@ -456,18 +436,13 @@ This complements the ML predictions with **real-time data** — users can check 
 
 ---
 
-## 13. Limitations & Future Improvements
+## 13. Project Maturity & Research Portfolio
 
-### Current Limitations
-- **Trained on one month** — More historical data (winter, summer) would improve accuracy
-- **Binary prediction only** — Predicts delayed (Yes/No), not exact delay duration
-- **Weather impact limited in mild months** — Bigger gains expected with winter data
-
-### Future Improvements
-- Train on 12+ months of data with seasonal weather variation
-- Add exact delay duration regression model
-- Add airport congestion as a real-time feature
-- Implement auto-retraining pipeline
+We have expanded the project into a full academic research package (located in the `/research_paper` folder) containing:
+- **Full System Architecture**: Details on the 3-tier Next.js/FastAPI/XGBoost logic.
+- **Data Pipeline Detail**: Processing of 7M+ records with temporal splitting.
+- **Academic Literature Review**: Comparison with industry benchmarks.
+- **Publication Figures**: Feature importance and KDE distribution plots.
 
 ---
 
