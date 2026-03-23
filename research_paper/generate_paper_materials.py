@@ -106,9 +106,9 @@ t1 = pd.DataFrame({
     "Value": [
         "BTS TranStats (U.S. Govt.)", "Oct–Nov 2025", "U.S. Domestic",
         "October 2025", "November 2025",
-        "601,570 (Oct 2025)", "555,296 (Nov 2025)",
-        "Arr. delay ≥ 15 min", "~20.3%",
-        "Days 1–25 (train) / Days 26–31 (test)", "16", "~80", "~2,000+",
+        "601,570 (Total Oct)", "555,296 (Total Nov)",
+        "Arr. delay ≥ 15 min", "20.32%",
+        "Days 1-25 (488,424) / Days 26-31 (113,146)", "14", "346", "5,746",
     ],
 })
 save_table(t1, "table_01_dataset_overview",

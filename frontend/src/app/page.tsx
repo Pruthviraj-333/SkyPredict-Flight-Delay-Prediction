@@ -278,6 +278,56 @@ export default function Home() {
                   }
                 </div>
 
+                {/* Estimated Delay Minutes */}
+                {result.predicted_delay_minutes > 0 && (
+                  <div style={{
+                    marginTop: 14,
+                    display: "flex", alignItems: "center", gap: 14,
+                    padding: "13px 18px", borderRadius: 10,
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                  }}>
+                    <div style={{
+                      minWidth: 52, height: 52, borderRadius: 10,
+                      background: result.predicted_delay_minutes < 30
+                        ? "var(--amber-muted)" : "var(--rose-muted)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      flexDirection: "column",
+                    }}>
+                      <span style={{
+                        fontFamily: "Space Grotesk", fontSize: 18, fontWeight: 700, lineHeight: 1,
+                        color: result.predicted_delay_minutes < 30 ? "var(--amber)" : "var(--rose)",
+                      }}>
+                        {Math.round(result.predicted_delay_minutes)}
+                      </span>
+                      <span style={{ fontSize: 9, fontWeight: 600, color: "var(--text-dim)", letterSpacing: 0.3 }}>MIN</span>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 3 }}>
+                        Estimated Delay
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                        {result.predicted_delay_minutes < 15
+                          ? "Minor delay — likely within acceptable range"
+                          : result.predicted_delay_minutes < 60
+                          ? "Moderate delay — plan for extra wait time"
+                          : "Significant delay — consider rebooking options"}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {result.predicted_delay_minutes === 0 && !result.is_delayed && (
+                  <div style={{
+                    marginTop: 14, padding: "10px 16px", borderRadius: 10, fontSize: 13,
+                    display: "flex", alignItems: "center", gap: 8,
+                    background: "rgba(52,211,153,0.07)",
+                    color: "var(--emerald)",
+                  }}>
+                    <span style={{ fontSize: 16 }}>✈️</span>
+                    <span>No delay expected — on-time arrival predicted</span>
+                  </div>
+                )}
+
                 {/* Model indicator */}
                 <div style={{
                   display: "flex", alignItems: "center", gap: 8,

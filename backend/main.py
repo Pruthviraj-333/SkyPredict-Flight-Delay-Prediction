@@ -87,7 +87,9 @@ async def health():
     return {
         "status": "healthy",
         "model_loaded": model_service is not None,
-        "model_type": "XGBoost Fallback Model",
+        "model_type": "XGBoost Dual-Model (Classifier + Regressor)",
+        "regressor_loaded": model_service.fallback_reg_model is not None if model_service else False,
+        "primary_regressor_loaded": model_service.primary_reg_model is not None if model_service else False,
         "flight_tracking": flight_tracker.is_available() if flight_tracker else False,
     }
 

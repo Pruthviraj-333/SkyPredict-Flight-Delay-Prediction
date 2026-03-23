@@ -24,6 +24,7 @@ export interface PredictionResult {
     flight_duration_minutes: number;
     model_used: string;
     weather_available: boolean;
+    predicted_delay_minutes: number;
 }
 
 export interface Stats {

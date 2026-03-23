@@ -4,11 +4,11 @@ Time Period,Oct–Nov 2025
 Geographic Scope,U.S. Domestic
 Training Month,October 2025
 Out-of-Sample Month,November 2025
-Total Training Flights,"601,570 (Oct 2025)"
-Total OOS Flights,"555,296 (Nov 2025)"
+Total Training Flights,"601,570 (Total Oct)"
+Total OOS Flights,"555,296 (Total Nov)"
 Delay Definition (threshold),Arr. delay ≥ 15 min
-Overall Delay Rate (train),~20.3%
-Temporal Split (train / test),Days 1–25 (train) / Days 26–31 (test)
-Number of Airlines,16
-Number of Airports,~80
-Number of Routes,"~2,000+"
+Overall Delay Rate (train),20.32%
+Temporal Split (train / test),"Days 1-25 (488,424) / Days 26-31 (113,146)"
+Number of Airlines,14
+Number of Airports,346
+Number of Routes,"5,746"

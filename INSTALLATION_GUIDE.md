@@ -69,25 +69,55 @@ AVIATIONSTACK_API_KEY=your_api_key_here
 
 ---
 
-## 🧠 ML Pipeline & Model Training
+## 🔄 Keeping Your Local Code Up-to-Date
 
-To get the application running, you have two options:
+If your teammates have already set up the project and want to pull the latest changes (including model updates and new features), they should run:
 
-### Option A: Replicate Model Training
-If you want to train the models from scratch using real data, run these scripts in order from the root directory:
-
-#### Phase 1: Fallback Model (No Weather)
 ```bash
-python ml/scripts/download_data.py          # Download raw BTS data
-python ml/scripts/preprocess.py             # Feature engineering
-python ml/scripts/train_fallback_model.py  # Train XGBoost fallback model
+# 1. Pull the latest code from GitHub
+git pull origin main
+
+# 2. Update Python dependencies (if requirements.txt changed)
+# Ensure your venv is activated first
+pip install -r requirements.txt
+
+# 3. Update Frontend dependencies
+cd frontend
+npm install
+cd ..
 ```
 
-#### Phase 2: Primary Model (Weather-Enhanced)
+---
+
+## 🧠 ML Pipeline & Model Training (v3)
+
+The system now uses an **Advanced Dual-Model Logic Gate (v3)**. It first classifies the risk of delay and then, if a delay is predicted, runs a high-precision **XGBoost Regressor** to estimate the exact number of minutes. Both models support a **Primary Weather-Enhanced** path and an automatic **High-Accuracy Fallback** path.
+
+### Option A: Replicate Model Training
+To train the latest **v2 models** (optimized with Optuna and enhanced feature engineering), run these scripts:
+
+#### 1. Data Preparation
 ```bash
+python ml/scripts/download_data.py          # Download raw BTS data
+python ml/scripts/preprocess.py             # Basic cleaning
 python ml/scripts/airport_coords.py        # Generate airport coordinates
-python ml/scripts/fetch_weather.py         # Fetch historical weather data
-python ml/scripts/build_weather_dataset.py # Merge flights + weather and train
+```
+
+#### 2. Train Optimized Models
+```bash
+# -- Classification Models --
+# Train the 45-feature Fallback Classifier (v2)
+python ml/scripts/train_fallback_1month_v2.py
+
+# Train the Weather-Enhanced Primary Classifier (v2)
+python ml/scripts/train_primary_1month_v2.py
+
+# -- Regression Models --
+# Train the 45-feature Fallback Regressor (v3)
+python ml/scripts/train_fallback_regression.py
+
+# Train the Weather-Enhanced Primary Regressor (v3)
+python ml/scripts/train_primary_regression.py
 ```
 
 ---
@@ -96,18 +126,25 @@ python ml/scripts/build_weather_dataset.py # Merge flights + weather and train
 If you don't want to train the models, request these files from the project owner and place them in the specified directories:
 
 **1. Essential Model Artifacts (Place in `models/`)**
-- `fallback_model.pkl`
-- `primary_model.pkl`
+
+| Logic Tier | Classifier (is_delayed) | Regressor (delay_minutes) |
+|---|---|---|
+| **Primary (Weather)** | `primary_model.pkl` | `primary_reg_model.pkl` |
+| **Fallback (Base)** | `fallback_model.pkl` | `fallback_reg_model.pkl` |
+
+**Support Files (Required):**
 - `encoders.pkl`
 - `aggregate_stats.pkl`
 - `model_config.pkl`
 - `primary_model_config.pkl`
+- `fallback_reg_config.pkl`
+- `primary_reg_config.pkl`
 
 **2. Essential Data Artifacts (Place in `data/`)**
-- `airport_coordinates.csv` (Required for weather-related predictions)
+- `airport_coordinates.csv`
 
 > [!TIP]
-> Using pre-trained models allows you to skip several hours of data processing and training.
+> The v2 models achieve significantly higher accuracy (90%+) by using advanced features like cyclical time encodings, holiday proxies, and airport congestion metrics.
 
 ---
 

@@ -55,7 +55,7 @@ class PredictionResult:
     def __init__(self, carrier, origin, dest, date, dep_time,
                  is_delayed, delay_probability, on_time_probability,
                  risk_level, distance, elapsed_time, model_used="fallback",
-                 weather_available=False):
+                 weather_available=False, predicted_delay_minutes=0.0):
         self.carrier = carrier
         self.origin = origin
         self.dest = dest
@@ -69,6 +69,7 @@ class PredictionResult:
         self.elapsed_time = elapsed_time
         self.model_used = model_used
         self.weather_available = weather_available
+        self.predicted_delay_minutes = predicted_delay_minutes
 
     def to_dict(self):
         return {
@@ -85,6 +86,7 @@ class PredictionResult:
             "flight_duration_minutes": round(self.elapsed_time, 1),
             "model_used": self.model_used,
             "weather_available": self.weather_available,
+            "predicted_delay_minutes": round(self.predicted_delay_minutes, 1),
         }
 
 
@@ -102,6 +104,11 @@ class ModelService:
         self.config = None
         self.route_lookup = None
         self.has_primary = False
+        # Regression models
+        self.fallback_reg_model = None
+        self.fallback_reg_features = []
+        self.primary_reg_model = None
+        self.primary_reg_features = []
         self._load()
 
     def _load(self):
@@ -133,6 +140,34 @@ class ModelService:
                 self.has_primary = False
         else:
             print("[INFO] No primary model found, using fallback only")
+
+        # Load fallback regressor
+        fb_reg_path = os.path.join(self.models_dir, "fallback_reg_model.pkl")
+        fb_reg_cfg  = os.path.join(self.models_dir, "fallback_reg_config.pkl")
+        if os.path.exists(fb_reg_path) and os.path.exists(fb_reg_cfg):
+            try:
+                with open(fb_reg_path, 'rb') as f:
+                    self.fallback_reg_model = pickle.load(f)
+                with open(fb_reg_cfg, 'rb') as f:
+                    cfg = pickle.load(f)
+                self.fallback_reg_features = cfg.get("features", [])
+                print(f"[INFO] Fallback regressor loaded ({len(self.fallback_reg_features)} features)")
+            except Exception as e:
+                print(f"[WARN] Could not load fallback regressor: {e}")
+
+        # Load primary regressor
+        pr_reg_path = os.path.join(self.models_dir, "primary_reg_model.pkl")
+        pr_reg_cfg  = os.path.join(self.models_dir, "primary_reg_config.pkl")
+        if os.path.exists(pr_reg_path) and os.path.exists(pr_reg_cfg):
+            try:
+                with open(pr_reg_path, 'rb') as f:
+                    self.primary_reg_model = pickle.load(f)
+                with open(pr_reg_cfg, 'rb') as f:
+                    cfg = pickle.load(f)
+                self.primary_reg_features = cfg.get("features", [])
+                print(f"[INFO] Primary regressor loaded ({len(self.primary_reg_features)} features)")
+            except Exception as e:
+                print(f"[WARN] Could not load primary regressor: {e}")
 
         # Load airport coordinates for weather service
         coords_file = os.path.join(self.data_dir, "airport_coordinates.csv")
@@ -476,6 +511,7 @@ class ModelService:
         1. Try to get weather data for origin + destination
         2. If weather available AND primary model loaded → use primary model
         3. Otherwise → use fallback model
+        Also runs the regression model to predict exact delay minutes.
         """
         info = self._build_base_features(carrier, origin, dest, date_str, dep_time)
         c, o, d = info["carrier"], info["origin"], info["dest"]
@@ -485,6 +521,7 @@ class ModelService:
 
         model_used = "fallback"
         weather_available = False
+        wx = None  # captured at outer scope for regression path
 
         # ─── Logic Gate: Try primary model first ───
         if self.has_primary:
@@ -523,12 +560,29 @@ class ModelService:
         elif delay_prob < 0.50: risk = "ELEVATED"
         else: risk = "HIGH"
 
+        # ─── Regression: Predict exact delay minutes ───
+        predicted_delay_min = 0.0
+        try:
+            if model_used == "primary" and self.primary_reg_model is not None and wx is not None:
+                reg_feats = pd.DataFrame([{**info["base_features"], **wx}])
+                reg_feats = reg_feats.reindex(columns=self.primary_reg_features, fill_value=0)
+                predicted_delay_min = float(self.primary_reg_model.predict(reg_feats)[0])
+            elif self.fallback_reg_model is not None:
+                fb_reg_feats = pd.DataFrame([info["fallback_features"]])
+                fb_reg_feats = fb_reg_feats.reindex(columns=self.fallback_reg_features, fill_value=0)
+                predicted_delay_min = float(self.fallback_reg_model.predict(fb_reg_feats)[0])
+            predicted_delay_min = max(0.0, predicted_delay_min)  # clip negatives
+        except Exception as e:
+            print(f"[WARN] Regression prediction failed: {e}")
+            predicted_delay_min = 0.0
+
         return PredictionResult(
             carrier=c, origin=o, dest=d, date=date_str, dep_time=dep_time,
             is_delayed=bool(prediction), delay_probability=delay_prob,
             on_time_probability=float(probability[0]),
             risk_level=risk, distance=distance, elapsed_time=elapsed_time,
             model_used=model_used, weather_available=weather_available,
+            predicted_delay_minutes=predicted_delay_min,
         )
 
     def batch_predict(self, flights: list) -> list:

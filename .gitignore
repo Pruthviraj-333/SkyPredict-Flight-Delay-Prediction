@@ -15,9 +15,8 @@ backend/venv/
 .env
 
 # Data files (too large for git)
-data/raw/*.csv
-data/processed/*.csv
-data/weather/*.csv
+data/**/*.csv
+data/**/*.parquet
 
 # Model artifacts (too large for git)
 models/*.pkl
