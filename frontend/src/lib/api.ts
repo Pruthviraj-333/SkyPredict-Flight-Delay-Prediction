@@ -63,10 +63,29 @@ export interface HourData {
     delay_rate: number;
 }
 
+import { getAuth } from "firebase/auth";
+
 async function fetchJSON(url: string, options?: RequestInit) {
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...((options?.headers as Record<string, string>) || {}),
+    };
+
+    // Attach Firebase auth token if user is logged in
+    try {
+        const auth = getAuth();
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+            const token = await currentUser.getIdToken();
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+    } catch {
+        // Auth not initialized yet — proceed without token
+    }
+
     const res = await fetch(`${API_BASE}${url}`, {
         ...options,
-        headers: { 'Content-Type': 'application/json', ...options?.headers },
+        headers,
     });
     if (!res.ok) throw new Error(`API error: ${res.status}`);
     return res.json();

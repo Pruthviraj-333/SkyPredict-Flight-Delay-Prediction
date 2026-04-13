@@ -14,14 +14,16 @@ Endpoints:
   GET  /api/analytics/heatmap   → Hour × Day heatmap
   GET  /api/analytics/carriers  → Delay by carrier
   GET  /api/analytics/hours     → Delay by hour of day
+  POST /api/auth/session        → Create/update user session
+  GET  /api/auth/me             → Current user profile
 """
 
 import os
 import sys
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 # Add parent directory to path so we can find the models
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -33,6 +35,8 @@ load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 from backend.model_service import ModelService
 from backend.flight_tracker import FlightTracker
+from backend.auth import init_firebase, get_current_user, is_firebase_available
+from backend.database import init_db, upsert_user, get_user
 
 # Initialize app
 app = FastAPI(
@@ -66,6 +70,11 @@ async def startup():
     print(f"[INFO] Model loaded. {len(model_service.get_airlines())} airlines, {len(model_service.get_airports())} airports.")
     print(f"[INFO] Flight tracking: {'enabled' if flight_tracker.is_available() else 'disabled (no API key)'}")
 
+    # Initialize authentication
+    init_firebase()
+    init_db()
+    print(f"[INFO] Authentication: {'enabled' if is_firebase_available() else 'disabled (no service account)'}")
+
 
 # ─── Request/Response Models ────────────────────────────────────
 
@@ -80,6 +89,31 @@ class BatchPredictRequest(BaseModel):
     flights: List[PredictRequest]
 
 
+# ─── Auth Endpoints ──────────────────────────────────────────────
+
+@app.post("/api/auth/session")
+async def create_session(user: Dict[str, Any] = Depends(get_current_user)):
+    """Register or update user in DB after Firebase login."""
+    db_user = upsert_user(
+        uid=user["uid"],
+        email=user.get("email"),
+        phone=user.get("phone"),
+        display_name=user.get("name"),
+        photo_url=user.get("picture"),
+        provider=user.get("provider", "unknown"),
+    )
+    return {"user": db_user}
+
+
+@app.get("/api/auth/me")
+async def get_me(user: Dict[str, Any] = Depends(get_current_user)):
+    """Get current authenticated user profile."""
+    db_user = get_user(user["uid"])
+    if db_user:
+        return {"user": db_user}
+    return {"user": user}
+
+
 # ─── Endpoints ───────────────────────────────────────────────────
 
 @app.get("/api/health")
@@ -91,6 +125,7 @@ async def health():
         "regressor_loaded": model_service.fallback_reg_model is not None if model_service else False,
         "primary_regressor_loaded": model_service.primary_reg_model is not None if model_service else False,
         "flight_tracking": flight_tracker.is_available() if flight_tracker else False,
+        "auth_enabled": is_firebase_available(),
     }
 
 

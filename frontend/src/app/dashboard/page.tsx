@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
+import AuthGuard from "@/components/AuthGuard";
 import { api, Stats, TrendData, RouteData, CarrierData, HourData } from "@/lib/api";
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -68,17 +69,17 @@ export default function StaffDashboard() {
     }, []);
 
     if (loading) return (
-        <>
+        <AuthGuard>
             <Navbar />
             <div className="page" style={{ textAlign: "center", paddingTop: 120 }}>
                 <span className="spin" style={{ margin: "0 auto", width: 24, height: 24, borderColor: "rgba(56,189,248,0.2)", borderTopColor: "var(--sky)" }} />
                 <p style={{ color: "var(--text-secondary)", marginTop: 12, fontSize: 14 }}>Loading analytics…</p>
             </div>
-        </>
+        </AuthGuard>
     );
 
     return (
-        <>
+        <AuthGuard>
             <Navbar />
             <div className="page">
                 {/* Header */}
@@ -205,6 +206,6 @@ export default function StaffDashboard() {
                     Data: Bureau of Transportation Statistics · October 2025
                 </p>
             </div>
-        </>
+        </AuthGuard>
     );
 }

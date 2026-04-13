@@ -55,17 +55,31 @@ cd ..
 
 ## ⚙️ Environment Configuration
 
-Create a `.env` file in the root directory to store your API keys:
-
-```bash
-touch .env
-```
-
-Add your keys to the `.env` file:
+### Backend `.env`
+Create a `.env` file in the root directory:
 ```env
-# Example .env content
 AVIATIONSTACK_API_KEY=your_api_key_here
+FIREBASE_SERVICE_ACCOUNT_PATH=backend/firebase-service-account.json
 ```
+
+### Firebase Authentication Setup
+1. Go to [Firebase Console](https://console.firebase.google.com) and create a project
+2. Enable **Google** sign-in provider under Authentication → Sign-in method
+3. Download the **Service Account JSON** from Project Settings → Service Accounts → Generate New Private Key
+4. Save it as `backend/firebase-service-account.json`
+5. Go to Project Settings → General → Your apps → Add web app, then copy the config
+6. Create `frontend/.env.local` with your Firebase config:
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=your-api-key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=000000000000
+NEXT_PUBLIC_FIREBASE_APP_ID=1:000000000000:web:abcdef1234567890
+```
+
+> [!IMPORTANT]
+> Both `backend/firebase-service-account.json` and `frontend/.env.local` contain secrets and are excluded from git. Each teammate must create their own from the Firebase Console.
 
 ---
 
@@ -167,16 +181,18 @@ npm run dev
 ### Accessing the App
 | Component | URL |
 |---|---|
-| **Passenger Interface** | [http://localhost:3000](http://localhost:3000) |
-| **Staff Dashboard** | [http://localhost:3000/staff](http://localhost:3000/staff) |
+| **Landing Page** | [http://localhost:3000](http://localhost:3000) |
+| **Predict Delays** | [http://localhost:3000/predict](http://localhost:3000/predict) |
+| **Analytics Dashboard** | [http://localhost:3000/dashboard](http://localhost:3000/dashboard) |
+| **Sign In** | [http://localhost:3000/login](http://localhost:3000/login) |
 | **API Documentation** | [http://localhost:8000/docs](http://localhost:8000/docs) |
 
 ---
 
 ## 🛠️ Project Structure Overview
 
-- `backend/`: FastAPI REST API endpoints.
-- `frontend/`: Next.js frontend with TypeScript and Vanilla CSS.
+- `backend/`: FastAPI REST API + Firebase auth endpoints.
+- `frontend/`: Next.js frontend with TypeScript, Vanilla CSS, and Firebase Auth.
 - `ml/`: Machine learning pipeline scripts.
 - `models/`: Pre-trained model artifacts (`.pkl`).
 - `data/`: Storage for raw and processed datasets.

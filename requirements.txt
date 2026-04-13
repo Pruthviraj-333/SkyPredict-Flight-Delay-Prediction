@@ -17,3 +17,6 @@ numpy==1.26.0
 # HTTP
 requests==2.32.0
 python-dotenv==1.0.0
+
+# Authentication
+firebase-admin==6.5.0
