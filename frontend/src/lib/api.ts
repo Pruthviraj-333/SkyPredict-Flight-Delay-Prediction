@@ -149,20 +149,28 @@ export const api = {
         const data = await fetchJSON(`/api/flight-status/${flightIata}`);
         return data.flight_status;
     },
+
+    lookupFlight: async (flightIata: string): Promise<FlightLookupData> => {
+        const data = await fetchJSON(`/api/flight-lookup/${flightIata}`);
+        return data.lookup;
+    },
 };
 
 export interface FlightStatusData {
     flight_iata: string;
     airline_name: string;
+    airline_iata: string;
     status: string;
     departure: {
         airport: string;
+        iata: string;
         scheduled: string | null;
         actual: string | null;
         delay_minutes: number | null;
     };
     arrival: {
         airport: string;
+        iata: string;
         scheduled: string | null;
         estimated: string | null;
         delay_minutes: number | null;
@@ -175,4 +183,17 @@ export interface FlightStatusData {
         is_ground: boolean;
         updated: string;
     } | null;
+}
+
+export interface FlightLookupData {
+    carrier: string;
+    airline_name: string;
+    origin: string;
+    dest: string;
+    date: string;
+    dep_time: string;
+    dep_airport_name: string;
+    arr_airport_name: string;
+    flight_iata: string;
+    status: string;
 }

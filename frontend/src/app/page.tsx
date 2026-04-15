@@ -17,7 +17,7 @@ function Counter({ end, suffix = "", duration = 2000 }: { end: number; suffix?: 
                     const start = performance.now();
                     const step = (now: number) => {
                         const t = Math.min((now - start) / duration, 1);
-                        const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+                        const eased = 1 - Math.pow(1 - t, 3);
                         setVal(Math.round(eased * end));
                         if (t < 1) requestAnimationFrame(step);
                     };
@@ -38,48 +38,6 @@ function Counter({ end, suffix = "", duration = 2000 }: { end: number; suffix?: 
     );
 }
 
-/* ── Feature card icons ───────────────────── */
-const features = [
-    {
-        icon: (
-            <svg viewBox="0 0 24 24" fill="none" stroke="var(--sky)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" width="32" height="32">
-                <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" />
-            </svg>
-        ),
-        title: "AI-Powered Prediction",
-        desc: "XGBoost models trained on 600K+ flights with 90%+ accuracy predict delays before they happen.",
-        color: "var(--sky)",
-    },
-    {
-        icon: (
-            <svg viewBox="0 0 24 24" fill="none" stroke="var(--emerald)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" width="32" height="32">
-                <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
-                <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
-            </svg>
-        ),
-        title: "Analytics Dashboard",
-        desc: "Explore delay patterns by airline, route, hour, and day of week through interactive visualizations.",
-        color: "var(--emerald)",
-    },
-    {
-        icon: (
-            <svg viewBox="0 0 24 24" fill="none" stroke="var(--amber)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" width="32" height="32">
-                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-            </svg>
-        ),
-        title: "Live Flight Tracking",
-        desc: "Real-time flight status with gate info, departure times, and delay alerts via AviationStack API.",
-        color: "var(--amber)",
-    },
-];
-
-/* ── Steps ────────────────────────────────── */
-const steps = [
-    { num: "01", title: "Enter Flight Details", desc: "Select your airline, origin, destination, and departure time." },
-    { num: "02", title: "AI Analyzes Patterns", desc: "Our ML model evaluates 45+ features from historical flight data." },
-    { num: "03", title: "Get Instant Prediction", desc: "Receive your delay probability with risk assessment and insights." },
-];
-
 export default function LandingPage() {
     const { user } = useAuth();
     const ctaHref = user ? "/predict" : "/login";
@@ -93,106 +51,177 @@ export default function LandingPage() {
                 <div className="hero-bg">
                     <div className="hero-glow hero-glow-1" />
                     <div className="hero-glow hero-glow-2" />
-                    <div className="hero-glow hero-glow-3" />
-                    {/* Animated flight path */}
-                    <svg className="hero-flight-path" viewBox="0 0 800 400" fill="none">
-                        <path
-                            d="M -50 350 Q 200 50 400 200 Q 600 350 850 50"
-                            stroke="rgba(56,189,248,0.08)"
-                            strokeWidth="2"
-                            strokeDasharray="8 8"
-                        />
-                        <circle r="4" fill="var(--sky)" opacity="0.8">
-                            <animateMotion
-                                path="M -50 350 Q 200 50 400 200 Q 600 350 850 50"
-                                dur="6s"
-                                repeatCount="indefinite"
-                            />
+                    {/* Subtle grid lines — like a radar/ATC screen */}
+                    <svg className="hero-grid-svg" viewBox="0 0 1200 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <line x1="0" y1="150" x2="1200" y2="150" stroke="rgba(56,189,248,0.04)" />
+                        <line x1="0" y1="300" x2="1200" y2="300" stroke="rgba(56,189,248,0.04)" />
+                        <line x1="0" y1="450" x2="1200" y2="450" stroke="rgba(56,189,248,0.04)" />
+                        <line x1="300" y1="0" x2="300" y2="600" stroke="rgba(56,189,248,0.04)" />
+                        <line x1="600" y1="0" x2="600" y2="600" stroke="rgba(56,189,248,0.04)" />
+                        <line x1="900" y1="0" x2="900" y2="600" stroke="rgba(56,189,248,0.04)" />
+                        {/* Flight arc */}
+                        <path d="M 100 420 Q 400 80 750 280 Q 950 400 1150 120" stroke="rgba(56,189,248,0.07)" strokeWidth="1.5" strokeDasharray="6 6" />
+                        <circle r="3" fill="var(--sky)" opacity="0.7">
+                            <animateMotion path="M 100 420 Q 400 80 750 280 Q 950 400 1150 120" dur="8s" repeatCount="indefinite" />
                         </circle>
                     </svg>
                 </div>
 
                 <div className="hero-content animate-enter">
-                    <div className="hero-badge">
-                        <span className="hero-badge-dot" />
-                        ML-Powered Flight Intelligence
-                    </div>
                     <h1 className="hero-title">
-                        Predict Flight Delays<br />
-                        <span className="hero-title-accent">Before They Happen</span>
+                        Will your flight<br />
+                        <span className="hero-title-accent">be on time?</span>
                     </h1>
                     <p className="hero-subtitle">
-                        SkyPredict uses machine learning trained on 600,000+ flights to give you
-                        instant delay predictions with 90%+ accuracy.
+                        We trained an XGBoost model on U.S. domestic flight records
+                        from the Bureau of Transportation Statistics — 601K+ flights
+                        across 14 carriers — accurate within ±30 minutes 86.5% of the time.
                     </p>
                     <div className="hero-actions">
                         <Link href={ctaHref} className="hero-cta">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" />
+                            Check your flight
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M5 12h14M12 5l7 7-7 7" />
                             </svg>
-                            Get Started Free
                         </Link>
                         <Link href="/dashboard" className="hero-secondary">
-                            View Analytics →
+                            Explore the data
                         </Link>
                     </div>
                 </div>
             </section>
 
-            {/* ══════════ STATS BAR ══════════ */}
-            <section className="stats-bar animate-enter-d1">
-                <div className="stats-bar-inner">
-                    {[
-                        { value: 600, suffix: "K+", label: "Flights Analyzed" },
-                        { value: 92, suffix: "%", label: "Prediction Accuracy" },
-                        { value: 20, suffix: "+", label: "Airlines Covered" },
-                        { value: 340, suffix: "+", label: "Airports" },
-                    ].map((s, i) => (
-                        <div key={i} className="stats-bar-item">
-                            <Counter end={s.value} suffix={s.suffix} />
-                            <div className="stats-bar-label">{s.label}</div>
+            {/* ══════════ WHAT WE BUILT ══════════ */}
+            <section className="landing-section">
+                <div className="built-grid">
+                    {/* Left — prose explanation */}
+                    <div className="built-text">
+                        <p className="section-tag">The project</p>
+                        <h2 className="section-title" style={{ textAlign: "left" }}>
+                            A flight delay predictor,<br />backed by real data
+                        </h2>
+                        <p className="built-body">
+                            SkyPredict isn&apos;t another dashboard template. It&apos;s a research project
+                            that combines <strong>601,570 BTS flight records</strong>,&nbsp;
+                            <strong>257K hourly weather observations</strong>, and a tuned
+                            XGBoost model to estimate whether a given domestic flight will depart late.
+                        </p>
+                        <p className="built-body">
+                            The model considers <strong>45 engineered features</strong> — including
+                            cyclical time encodings, airport congestion proxies, carrier delay rates,
+                            and holiday indicators — then outputs a delay probability and an estimated
+                            delay in minutes.
+                        </p>
+                    </div>
+
+                    {/* Right — stats */}
+                    <div className="built-stats">
+                        <div className="built-stat-card">
+                            <Counter end={601} suffix="K" />
+                            <span className="built-stat-label">flight records in the training set</span>
                         </div>
-                    ))}
+                        <div className="built-stat-card">
+                            <Counter end={45} />
+                            <span className="built-stat-label">engineered features per prediction</span>
+                        </div>
+                        <div className="built-stat-card">
+                            <Counter end={86} suffix=".5%" />
+                            <span className="built-stat-label">regression accuracy (within ±30 min)</span>
+                        </div>
+                        <div className="built-stat-card">
+                            <Counter end={346} />
+                            <span className="built-stat-label">U.S. airports covered</span>
+                        </div>
+                    </div>
                 </div>
             </section>
 
-            {/* ══════════ FEATURES ══════════ */}
-            <section className="landing-section">
-                <div className="section-header animate-enter-d2">
-                    <p className="section-tag">Features</p>
-                    <h2 className="section-title">Everything You Need to Stay Ahead</h2>
-                    <p className="section-desc">
-                        From prediction to analytics, SkyPredict gives you the complete flight intelligence toolkit.
-                    </p>
-                </div>
-                <div className="features-grid animate-enter-d3">
-                    {features.map((f, i) => (
-                        <div key={i} className="feature-card">
-                            <div className="feature-icon" style={{ background: `${f.color}15` }}>
-                                {f.icon}
-                            </div>
-                            <h3 className="feature-title">{f.title}</h3>
-                            <p className="feature-desc">{f.desc}</p>
-                        </div>
-                    ))}
-                </div>
-            </section>
-
-            {/* ══════════ HOW IT WORKS ══════════ */}
-            <section className="landing-section">
+            {/* ══════════ CAPABILITIES ══════════ */}
+            <section className="landing-section" style={{ paddingTop: 40 }}>
                 <div className="section-header">
-                    <p className="section-tag">How It Works</p>
-                    <h2 className="section-title">Three Steps to Smarter Travel</h2>
+                    <p className="section-tag">Capabilities</p>
+                    <h2 className="section-title">What you can do</h2>
                 </div>
-                <div className="steps-grid">
-                    {steps.map((s, i) => (
-                        <div key={i} className="step-card">
-                            <div className="step-num">{s.num}</div>
-                            <h3 className="step-title">{s.title}</h3>
-                            <p className="step-desc">{s.desc}</p>
-                            {i < steps.length - 1 && <div className="step-connector" />}
+                <div className="cap-grid">
+                    <div className="cap-card cap-card-wide">
+                        <div className="cap-icon-wrap" style={{ background: "rgba(56,189,248,0.08)" }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="var(--sky)" strokeWidth="1.5" width="28" height="28">
+                                <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" />
+                            </svg>
                         </div>
-                    ))}
+                        <h3 className="cap-title">Delay prediction</h3>
+                        <p className="cap-desc">
+                            Pick an airline, route, and departure time. The model classifies delay risk
+                            and — if a delay is likely — estimates how many minutes to expect.
+                            Uses a dual-model architecture: classifier → regressor.
+                        </p>
+                    </div>
+                    <div className="cap-card">
+                        <div className="cap-icon-wrap" style={{ background: "rgba(52,211,153,0.08)" }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="var(--emerald)" strokeWidth="1.5" width="28" height="28">
+                                <path d="M3 3v18h18" /><path d="M7 16l4-8 4 4 4-6" />
+                            </svg>
+                        </div>
+                        <h3 className="cap-title">Delay analytics</h3>
+                        <p className="cap-desc">
+                            See which airlines, routes, and hours have the worst delay rates.
+                            Interactive charts built from the same BTS dataset.
+                        </p>
+                    </div>
+                    <div className="cap-card">
+                        <div className="cap-icon-wrap" style={{ background: "rgba(251,191,36,0.08)" }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="var(--amber)" strokeWidth="1.5" width="28" height="28">
+                                <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
+                            </svg>
+                        </div>
+                        <h3 className="cap-title">Live flight status</h3>
+                        <p className="cap-desc">
+                            Enter a flight number to pull real-time gate, departure, and
+                            arrival data from the AviationStack API.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            {/* ══════════ UNDER THE HOOD ══════════ */}
+            <section className="landing-section" style={{ paddingTop: 40 }}>
+                <div className="section-header">
+                    <p className="section-tag">Under the hood</p>
+                    <h2 className="section-title">How the model works</h2>
+                </div>
+                <div className="hood-timeline">
+                    <div className="hood-step">
+                        <div className="hood-marker">1</div>
+                        <div className="hood-text">
+                            <h4>Feature extraction</h4>
+                            <p>
+                                Raw inputs (airline, airports, date, time) are transformed into 45 features:
+                                cyclical sin/cos of hour and month, one-hot carrier codes, historical
+                                route delay averages, airport congestion windows, holiday proximity, and more.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="hood-step">
+                        <div className="hood-marker">2</div>
+                        <div className="hood-text">
+                            <h4>Classification</h4>
+                            <p>
+                                An XGBoost classifier (75 Optuna trials, temporal Oct 1-25 / Oct 26-31 split)
+                                predicts whether the flight will be delayed (&gt;15 min). Threshold tuned for best F1.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="hood-step">
+                        <div className="hood-marker">3</div>
+                        <div className="hood-text">
+                            <h4>Regression</h4>
+                            <p>
+                                If the classifier predicts delay, a second XGBoost regressor estimates
+                                the expected delay duration in minutes. Both models share the same
+                                feature pipeline.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -200,19 +229,16 @@ export default function LandingPage() {
             <section className="cta-section">
                 <div className="cta-glow" />
                 <div className="cta-content">
-                    <h2 className="cta-title">Ready to Predict Your Next Flight?</h2>
+                    <h2 className="cta-title">Try it out</h2>
                     <p className="cta-desc">
-                        Join SkyPredict and get instant delay predictions powered by machine learning.
-                        Free to use, no credit card required.
+                        Sign in with Google and run a prediction — it takes about 10 seconds.
                     </p>
-                    <Link href={ctaHref} className="hero-cta" style={{ fontSize: 16, padding: "14px 32px" }}>
-                        Start Predicting Now
+                    <Link href={ctaHref} className="hero-cta" style={{ fontSize: 15, padding: "13px 28px" }}>
+                        Check a flight
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
                     </Link>
-                    <div className="cta-trust">
-                        <span>🔒 Secure Google Sign-In</span>
-                        <span>⚡ Instant Results</span>
-                        <span>🎓 Free for Students</span>
-                    </div>
                 </div>
             </section>
 
@@ -220,18 +246,18 @@ export default function LandingPage() {
             <footer className="landing-footer">
                 <div className="footer-inner">
                     <div className="footer-brand">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--sky)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sky)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" />
                         </svg>
                         <span>SkyPredict</span>
                     </div>
                     <div className="footer-links">
                         <Link href="/predict">Predict</Link>
-                        <Link href="/dashboard">Dashboard</Link>
-                        <Link href="/login">Sign In</Link>
+                        <Link href="/dashboard">Analytics</Link>
+                        <Link href="/login">Sign in</Link>
                     </div>
                     <div className="footer-copy">
-                        © {new Date().getFullYear()} SkyPredict · Built with ML & ❤️ · Data: Bureau of Transportation Statistics
+                        Data sourced from the Bureau of Transportation Statistics · © {new Date().getFullYear()}
                     </div>
                 </div>
             </footer>

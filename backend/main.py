@@ -142,6 +142,56 @@ async def get_flight_status(flight_iata: str):
     return {"flight_status": result}
 
 
+@app.get("/api/flight-lookup/{flight_iata}")
+async def flight_lookup(flight_iata: str):
+    """Look up a flight by number and return form-ready data for prediction."""
+    if not flight_tracker or not flight_tracker.is_available():
+        raise HTTPException(status_code=503, detail="Flight tracking not available (no API key)")
+
+    result = flight_tracker.get_flight_status(flight_iata)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Flight not found")
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+
+    # Extract data for the prediction form
+    dep_iata = result.get("departure", {}).get("iata", "")
+    arr_iata = result.get("arrival", {}).get("iata", "")
+    airline_iata = result.get("airline_iata", "")
+    airline_name = result.get("airline_name", "")
+    scheduled = result.get("departure", {}).get("scheduled")
+
+    # Parse scheduled datetime → date + dep_time
+    flight_date = ""
+    dep_time = ""
+    if scheduled:
+        try:
+            from datetime import datetime as dt
+            parsed = dt.fromisoformat(scheduled.replace("Z", "+00:00"))
+            flight_date = parsed.strftime("%Y-%m-%d")
+            dep_time = parsed.strftime("%H%M")
+        except Exception:
+            pass
+
+    # Try to map airline IATA to our known carrier codes
+    carrier = airline_iata.upper() if airline_iata else ""
+
+    return {
+        "lookup": {
+            "carrier": carrier,
+            "airline_name": airline_name,
+            "origin": dep_iata.upper() if dep_iata else "",
+            "dest": arr_iata.upper() if arr_iata else "",
+            "date": flight_date,
+            "dep_time": dep_time,
+            "dep_airport_name": result.get("departure", {}).get("airport", ""),
+            "arr_airport_name": result.get("arrival", {}).get("airport", ""),
+            "flight_iata": result.get("flight_iata", flight_iata),
+            "status": result.get("status", ""),
+        }
+    }
+
+
 @app.get("/api/airlines")
 async def get_airlines():
     names = model_service.get_airline_names()

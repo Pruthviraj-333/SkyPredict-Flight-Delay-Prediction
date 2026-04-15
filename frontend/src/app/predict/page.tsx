@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import AuthGuard from "@/components/AuthGuard";
 import AirportSearch from "@/components/AirportSearch";
-import { api, Airline, Airport, PredictionResult, FlightStatusData } from "@/lib/api";
+import { api, Airline, Airport, PredictionResult, FlightStatusData, FlightLookupData } from "@/lib/api";
 
 /* ── Animated arc gauge ─────────────────────────── */
 function ArcGauge({ value }: { value: number }) {
@@ -64,6 +64,10 @@ export default function Home() {
   const [trackLoading, setTrackLoading] = useState(false);
   const [flightStatus, setFlightStatus] = useState<FlightStatusData | null>(null);
   const [trackErr, setTrackErr] = useState("");
+  const [lookupInput, setLookupInput] = useState("");
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupMsg, setLookupMsg] = useState("");
+  const [lookupErr, setLookupErr] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -97,6 +101,39 @@ export default function Home() {
       else setErr(msg || "Something went wrong. Please try again.");
     }
     finally { setLoading(false); }
+  };
+
+  /* ── Flight number lookup for auto-fill ──── */
+  const lookupFlight = async () => {
+    const num = lookupInput.trim();
+    if (!num) { setLookupErr("Enter a flight number (e.g. AA100)."); return; }
+    if (num.length < 3) { setLookupErr("Flight number must be at least 3 characters."); return; }
+    setLookupLoading(true); setLookupErr(""); setLookupMsg("");
+    try {
+      const data = await api.lookupFlight(num);
+      // Auto-fill form fields
+      if (data.carrier) setCarrier(data.carrier);
+      if (data.origin) setOrigin(data.origin);
+      if (data.dest) setDest(data.dest);
+      if (data.date) setDate(data.date);
+      if (data.dep_time) {
+        // Convert HHMM to HH:MM for the time input
+        const hh = data.dep_time.slice(0, 2);
+        const mm = data.dep_time.slice(2, 4);
+        setDepTime(`${hh}:${mm}`);
+      }
+      setLookupMsg(
+        `${data.flight_iata || num} — ${data.airline_name || data.carrier}, ` +
+        `${data.origin} → ${data.dest}` +
+        (data.date ? `, ${data.date}` : "")
+      );
+    } catch (e: any) {
+      const msg = e.message || "";
+      if (msg.includes("404") || msg.includes("400")) setLookupErr(`Flight "${num}" not found. Check the number and try again.`);
+      else if (msg.includes("503")) setLookupErr("Flight lookup is unavailable (no AviationStack API key).");
+      else setLookupErr(msg || "Could not look up flight.");
+    }
+    finally { setLookupLoading(false); }
   };
 
   const riskClass = result ? `risk-${result.risk_level.toLowerCase()}` : "";
@@ -163,6 +200,46 @@ export default function Home() {
               <span className="spin" style={{ marginRight: 8 }} />Loading airlines and airports…
             </div>
           )}
+
+          {/* Flight number auto-fill */}
+          <div style={{ marginBottom: 18, paddingBottom: 18, borderBottom: "1px solid var(--border)" }}>
+            <label className="field-label" style={{ marginBottom: 4 }}>Quick fill — enter a flight number</label>
+            <div style={{ display: "flex", gap: 10, alignItems: "end" }}>
+              <div style={{ flex: 1, maxWidth: 220 }}>
+                <input
+                  className="field-input"
+                  placeholder="e.g. AA100, DL402"
+                  value={lookupInput}
+                  onChange={e => setLookupInput(e.target.value.toUpperCase())}
+                  onKeyDown={e => e.key === "Enter" && lookupFlight()}
+                  maxLength={10}
+                />
+              </div>
+              <button
+                className="btn"
+                onClick={lookupFlight}
+                disabled={lookupLoading}
+                style={{
+                  height: 42, minWidth: 100,
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid var(--border)",
+                  color: "var(--text-primary)",
+                  cursor: "pointer",
+                }}
+              >
+                {lookupLoading ? <><span className="spin" /> Looking up…</> : "Lookup"}
+              </button>
+            </div>
+            {lookupMsg && (
+              <p style={{ marginTop: 8, fontSize: 12.5, color: "var(--emerald)", display: "flex", alignItems: "center", gap: 6 }}>
+                <span>✓</span> {lookupMsg} — please verify details below before predicting
+              </p>
+            )}
+            {lookupErr && (
+              <p style={{ marginTop: 8, fontSize: 12.5, color: "var(--rose)" }}>{lookupErr}</p>
+            )}
+          </div>
+
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 14 }}>
             <div>
               <label className="field-label">Airline</label>

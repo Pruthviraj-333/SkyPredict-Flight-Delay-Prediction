@@ -13,11 +13,12 @@ from datetime import datetime
 
 class FlightStatus:
     """Structured flight status result."""
-    def __init__(self, flight_iata, airline_name, departure, arrival,
+    def __init__(self, flight_iata, airline_name, airline_iata, departure, arrival,
                  status, dep_delay, arr_delay, dep_actual, arr_estimated,
-                 dep_airport, arr_airport, live_data):
+                 dep_airport, arr_airport, dep_iata, arr_iata, live_data):
         self.flight_iata = flight_iata
         self.airline_name = airline_name
+        self.airline_iata = airline_iata
         self.departure = departure
         self.arrival = arrival
         self.status = status
@@ -27,21 +28,26 @@ class FlightStatus:
         self.arr_estimated = arr_estimated
         self.dep_airport = dep_airport
         self.arr_airport = arr_airport
+        self.dep_iata = dep_iata
+        self.arr_iata = arr_iata
         self.live_data = live_data
 
     def to_dict(self):
         return {
             "flight_iata": self.flight_iata,
             "airline_name": self.airline_name,
+            "airline_iata": self.airline_iata,
             "status": self.status,
             "departure": {
                 "airport": self.dep_airport,
+                "iata": self.dep_iata,
                 "scheduled": self.departure,
                 "actual": self.dep_actual,
                 "delay_minutes": self.dep_delay,
             },
             "arrival": {
                 "airport": self.arr_airport,
+                "iata": self.arr_iata,
                 "scheduled": self.arrival,
                 "estimated": self.arr_estimated,
                 "delay_minutes": self.arr_delay,
@@ -115,6 +121,7 @@ class FlightTracker:
             status = FlightStatus(
                 flight_iata=flight.get("flight", {}).get("iata", flight_iata),
                 airline_name=airline.get("name", "Unknown"),
+                airline_iata=airline.get("iata", ""),
                 departure=departure.get("scheduled"),
                 arrival=arrival.get("scheduled"),
                 status=flight.get("flight_status", "unknown"),
@@ -124,6 +131,8 @@ class FlightTracker:
                 arr_estimated=arrival.get("estimated"),
                 dep_airport=departure.get("airport", "Unknown"),
                 arr_airport=arrival.get("airport", "Unknown"),
+                dep_iata=departure.get("iata", ""),
+                arr_iata=arrival.get("iata", ""),
                 live_data=live_data,
             )
 
@@ -135,3 +144,4 @@ class FlightTracker:
             return {"error": "Could not connect to AviationStack"}
         except Exception as e:
             return {"error": str(e)}
+
