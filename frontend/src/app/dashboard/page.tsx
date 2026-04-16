@@ -1,13 +1,35 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Component, ReactNode } from "react";
+import dynamic from "next/dynamic";
 import Navbar from "@/components/Navbar";
 import AuthGuard from "@/components/AuthGuard";
-import { api, Stats, TrendData, RouteData, CarrierData, HourData } from "@/lib/api";
+import { api, Stats, TrendData, RouteData, CarrierData, HourData, AirportMapItem, MapRouteItem } from "@/lib/api";
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
     AreaChart, Area, CartesianGrid, Cell,
 } from "recharts";
+
+const FlightMap = dynamic(() => import("@/components/FlightMap"), { ssr: false });
+
+/* ── Error boundary for map ────────────── */
+class MapErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+    constructor(props: { children: ReactNode }) {
+        super(props);
+        this.state = { hasError: false };
+    }
+    static getDerivedStateFromError() { return { hasError: true }; }
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="chart-card" style={{ padding: 32, textAlign: "center", color: "var(--text-secondary)" }}>
+                    <p style={{ fontSize: 14 }}>Map visualization could not be loaded.</p>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
 
 /* ── Custom tooltip ──────────────────────── */
 function Tip({ active, payload, label }: any) {
@@ -60,11 +82,13 @@ export default function StaffDashboard() {
     const [routes, setRoutes] = useState<RouteData[]>([]);
     const [carriers, setCarriers] = useState<CarrierData[]>([]);
     const [hours, setHours] = useState<HourData[]>([]);
+    const [mapAirports, setMapAirports] = useState<AirportMapItem[]>([]);
+    const [mapRoutes, setMapRoutes] = useState<MapRouteItem[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        Promise.all([api.getStats(), api.getTrends(), api.getRoutes(), api.getCarriers(), api.getHours()])
-            .then(([s, t, r, c, h]) => { setStats(s); setTrends(t); setRoutes(r); setCarriers(c); setHours(h); setLoading(false); })
+        Promise.all([api.getStats(), api.getTrends(), api.getRoutes(), api.getCarriers(), api.getHours(), api.getAirportMap()])
+            .then(([s, t, r, c, h, m]) => { setStats(s); setTrends(t); setRoutes(r); setCarriers(c); setHours(h); setMapAirports(m.airports); setMapRoutes(m.routes); setLoading(false); })
             .catch(() => setLoading(false));
     }, []);
 
@@ -111,6 +135,15 @@ export default function StaffDashboard() {
                             <div className="stat-pill-label">Routes</div>
                             <div className="stat-pill-value" style={{ color: "var(--emerald)" }}>{stats.total_routes.toLocaleString()}</div>
                         </div>
+                    </div>
+                )}
+
+                {/* Map Visualization */}
+                {mapAirports.length > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                        <MapErrorBoundary>
+                            <FlightMap airports={mapAirports} routes={mapRoutes} />
+                        </MapErrorBoundary>
                     </div>
                 )}
 

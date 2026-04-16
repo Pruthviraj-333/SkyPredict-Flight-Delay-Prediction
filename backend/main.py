@@ -270,3 +270,8 @@ async def get_carriers():
 @app.get("/api/analytics/hours")
 async def get_hours():
     return {"hours": model_service.get_analytics_hours()}
+
+
+@app.get("/api/analytics/airport-map")
+async def get_airport_map():
+    return model_service.get_airport_map_data()

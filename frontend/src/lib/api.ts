@@ -154,6 +154,11 @@ export const api = {
         const data = await fetchJSON(`/api/flight-lookup/${flightIata}`);
         return data.lookup;
     },
+
+    getAirportMap: async (): Promise<AirportMapResponse> => {
+        const data = await fetchJSON('/api/analytics/airport-map');
+        return data;
+    },
 };
 
 export interface FlightStatusData {
@@ -196,4 +201,27 @@ export interface FlightLookupData {
     arr_airport_name: string;
     flight_iata: string;
     status: string;
+}
+
+export interface AirportMapItem {
+    iata: string;
+    name: string;
+    lat: number;
+    lon: number;
+    delay_rate: number;
+}
+
+export interface MapRouteItem {
+    origin: string;
+    dest: string;
+    origin_lat: number;
+    origin_lon: number;
+    dest_lat: number;
+    dest_lon: number;
+    delay_rate: number;
+}
+
+export interface AirportMapResponse {
+    airports: AirportMapItem[];
+    routes: MapRouteItem[];
 }

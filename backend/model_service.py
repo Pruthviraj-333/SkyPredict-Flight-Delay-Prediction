@@ -585,6 +585,62 @@ class ModelService:
             predicted_delay_minutes=predicted_delay_min,
         )
 
+    def get_airport_map_data(self, top_routes=10):
+        """Return airport coordinates + delay rates and top delayed routes for map visualization."""
+        coords_file = os.path.join(self.data_dir, "airport_coordinates.csv")
+        if not os.path.exists(coords_file):
+            return {"airports": [], "routes": []}
+
+        coords_df = pd.read_csv(coords_file)
+        origin_rates = self.agg_stats.get('origin_delay_rate', {})
+        dest_rates = self.agg_stats.get('dest_delay_rate', {})
+        known_airports = set(self.get_airports())
+
+        airports = []
+        coord_lookup = {}
+        for _, row in coords_df.iterrows():
+            iata = row['iata']
+            if iata not in known_airports:
+                continue
+            lat, lon = float(row['latitude']), float(row['longitude'])
+            # Filter to AlbersUsa-supported range (CONUS + Alaska + Hawaii)
+            # Excludes territories like Guam, American Samoa that crash the projection
+            if not (17.0 <= lat <= 72.0 and -180.0 <= lon <= -65.0):
+                continue
+            coord_lookup[iata] = (lat, lon)
+            avg_rate = (origin_rates.get(iata, 0.203) + dest_rates.get(iata, 0.203)) / 2
+            airports.append({
+                "iata": iata,
+                "name": row.get('name', iata),
+                "lat": round(lat, 4),
+                "lon": round(lon, 4),
+                "delay_rate": round(avg_rate * 100, 2),
+            })
+
+        # Top delayed routes with coordinates
+        route_rates = self.agg_stats.get('route_delay_rate', {})
+        sorted_routes = sorted(route_rates.items(), key=lambda x: x[1], reverse=True)
+        routes = []
+        for route_key, rate in sorted_routes:
+            if len(routes) >= top_routes:
+                break
+            parts = route_key.split('_')
+            if len(parts) != 2:
+                continue
+            orig, dest = parts
+            if orig in coord_lookup and dest in coord_lookup:
+                routes.append({
+                    "origin": orig,
+                    "dest": dest,
+                    "origin_lat": coord_lookup[orig][0],
+                    "origin_lon": coord_lookup[orig][1],
+                    "dest_lat": coord_lookup[dest][0],
+                    "dest_lon": coord_lookup[dest][1],
+                    "delay_rate": round(rate * 100, 2),
+                })
+
+        return {"airports": airports, "routes": routes}
+
     def batch_predict(self, flights: list) -> list:
         return [
             self.predict(f['carrier'], f['origin'], f['dest'], f['date'], f['dep_time']).to_dict()
