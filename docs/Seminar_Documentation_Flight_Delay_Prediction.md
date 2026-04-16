@@ -421,9 +421,21 @@ This ensures we don't overestimate minor delays while maintaining high precision
 
 ---
 
-## 12. Real-Time Flight Tracking
+## 12. Advanced User Interface Features
 
-Our application also includes **live flight tracking** using the AviationStack API:
+Our application includes several advanced features to enhance user experience and accessibility of the data:
+
+### 🛫 Flight Number Auto-Fill
+Instead of manually typing carrier, origin, and destination, users simply enter their **Flight Number** (e.g., AA123). The system automatically pings the AviationStack API to fetch the scheduled flight path and departure time, streamlining the prediction process.
+
+### 📍 Interactive U.S. Airport Delay Map
+The dashboard features an interactive visualization powered by `react-simple-maps`. 
+- **Geographic Insights**: Plots 338 major US airports with color-coded markers based on delay severity (green = low delay risk, red = high delay risk).
+- **Network Paths**: Displays route arcs for the top 10 most heavily delayed routes in the country.
+- **Dynamic Tooltips**: Hovering over airports reveals real-time performance statistics, offering a comprehensive geographic overview of the national airspace health.
+
+### 📡 Real-Time Flight Tracking
+The application also includes live flight tracking using the AviationStack API:
 
 | Feature | Detail |
 |---|---|
@@ -432,7 +444,7 @@ Our application also includes **live flight tracking** using the AviationStack A
 | **Arrival** | Airport, scheduled time, estimated time, delay |
 | **Live Position** | Latitude, longitude, altitude, speed (when in air) |
 
-This complements the ML predictions with **real-time data** — users can check both the predicted delay risk and the actual live flight status.
+These features complement the ML predictions with **real-time data** and intuitive visualizations, allowing users to check both predicted delay risks and actual live flight status.
 
 ---
 
