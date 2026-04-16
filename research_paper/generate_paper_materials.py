@@ -251,9 +251,9 @@ print("  GENERATING FIGURES")
 print("="*60)
 
 # ── Fig 1: System Architecture ────────────────────────────────────────────────
-fig, ax = plt.subplots(figsize=(14, 7))
+fig, ax = plt.subplots(figsize=(14, 8.5))
 ax.axis("off")
-ax.set_xlim(0, 14); ax.set_ylim(0, 7)
+ax.set_xlim(0, 14); ax.set_ylim(-3, 7)
 
 def box(ax, x, y, w, h, text, color="#2196F3", fontsize=10, text_color="white", radius=0.3):
     box_ = mpatches.FancyBboxPatch((x - w/2, y - h/2), w, h,
@@ -276,9 +276,12 @@ box(ax, 2, 5.5, 3, 0.9, "User Input\n(Carrier, Origin, Dest\nDate, Time)", "#607
 box(ax, 7, 5.5, 3.2, 0.9, "Feature Engineering\n(45 base features)", "#1565C0")
 box(ax, 7, 3.8, 3.2, 0.9, "Weather Fetch\n(Open-Meteo API)", "#00838F")
 box(ax, 7, 2.2, 3.2, 0.9, "Logic Gate\nWeather Available?", "#6A1B9A")
-box(ax, 4, 0.9, 2.8, 0.8, "Primary Model\n(Weather, 60+ feat)\nROC-AUC 0.780", "#1B5E20", fontsize=9)
-box(ax, 10, 0.9, 2.8, 0.8, "Fallback Model\n(No Weather, 45 feat)\nROC-AUC 0.778", "#BF360C", fontsize=9)
-box(ax, 7, -0.4, 3.0, 0.8, "Risk Assessment\nLOW / MODERATE / ELEVATED / HIGH", "#37474F")
+box(ax, 4, 0.9, 2.8, 0.8, "Primary Classifier\n(Weather)\nROC-AUC 0.780", "#1B5E20", fontsize=9)
+box(ax, 10, 0.9, 2.8, 0.8, "Fallback Classifier\n(No Weather)\nROC-AUC 0.778", "#BF360C", fontsize=9)
+box(ax, 7, -0.4, 3.2, 0.8, "Is Risk Elevated/High?", "#37474F", fontsize=10)
+
+box(ax, 3.5, -1.8, 2.8, 0.8, "On-Time Baseline\n(0-15 mins prediction)", "#4CAF50", fontsize=10)
+box(ax, 10.5, -1.8, 3.2, 0.8, "Magnitude Estimator\nPrimary/Fallback Regressor\n(MAE: ~17 min)", "#FF8F00", fontsize=10)
 
 arrow(ax, 2, 5.05, 2, 4.3, "")
 ax.annotate("", xy=(5.4, 5.5), xytext=(3.5, 5.5),
@@ -293,6 +296,9 @@ arrow(ax, 7, 1.75, 5.5, 1.3, "YES →")
 arrow(ax, 7, 1.75, 8.5, 1.3, "← NO")
 arrow(ax, 4, 0.5, 5.5, -0.05)
 arrow(ax, 10, 0.5, 8.5, -0.05)
+
+arrow(ax, 7, -0.8, 4.9, -1.4, "NO")
+arrow(ax, 7, -0.8, 9.1, -1.4, "YES")
 
 ax.set_title("Fig 1 — SkyPredict System Architecture: Dual-Model Logic Gate",
              fontsize=14, fontweight="bold", pad=14)

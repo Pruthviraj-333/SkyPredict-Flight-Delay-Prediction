@@ -1,0 +1,6 @@
+Metric Category,Metric,Measured Value,Interpretation
+Regression,MAE,17.21 min,Average precise minute error.
+Regression,RMSE,43.90 min,Heavily penalized by outliers.
+Regression,R²,0.116,Variance explained by inputs.
+Classification,Accuracy (Within ±15m Cutoff),67.34%,Matches dispatcher-level accuracy.
+Classification,F1 Score,0.584,Robust harmonic mean evaluation.

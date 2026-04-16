@@ -1,0 +1,3 @@
+Feature Set,MAE (min),R²,Within ±30m
+Control (Fallback),17.21,0.116,86.5%
+Experimental (Primary),17.2,0.114,86.5%
