@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, memo, useMemo, useCallback } from "react";
+import { useState, memo, useMemo, useCallback, useRef } from "react";
 import {
     ComposableMap,
     Geographies,
@@ -50,15 +50,20 @@ function delayRadius(rate: number): number {
 }
 
 /* ── Tooltip component ─────────────────── */
-function MapTooltip({ airport, pos }: { airport: AirportMapItem | null; pos: { x: number; y: number } }) {
+function MapTooltip({ airport, pos, containerWidth }: { airport: AirportMapItem | null; pos: { x: number; y: number }; containerWidth: number }) {
     if (!airport) return null;
     const color = delayColor(airport.delay_rate);
+    const tipWidth = 220;
+    const tipHeight = 80;
+    // Flip left when tooltip would overflow the container's right edge
+    const flipX = pos.x + tipWidth + 20 > containerWidth;
+    const flipY = pos.y > tipHeight + 20;
     return (
         <div
             style={{
-                position: "fixed",
-                left: pos.x + 14,
-                top: pos.y - 10,
+                position: "absolute",
+                left: flipX ? Math.max(0, pos.x - tipWidth - 14) : pos.x + 14,
+                top: flipX && flipY ? pos.y - tipHeight : pos.y - 10,
                 background: "#111827",
                 border: `1px solid ${color}33`,
                 borderRadius: 8,
@@ -67,7 +72,7 @@ function MapTooltip({ airport, pos }: { airport: AirportMapItem | null; pos: { x
                 pointerEvents: "none",
                 zIndex: 100,
                 boxShadow: `0 4px 20px ${color}22`,
-                maxWidth: 220,
+                maxWidth: tipWidth,
             }}
         >
             <div style={{ fontWeight: 700, color: "#f1f5f9", marginBottom: 2 }}>
@@ -161,11 +166,10 @@ function SafeLine({ route, index }: { route: MapRouteItem; index: number }) {
 function FlightMapInner({ airports, routes }: FlightMapProps) {
     const [hovered, setHovered] = useState<AirportMapItem | null>(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [containerWidth, setContainerWidth] = useState(800);
 
     // Safety filter: only include airports within AlbersUsa range
-    // CONUS: lat 24-50, lon -125 to -66
-    // Alaska: lat 51-72, lon -180 to -130
-    // Hawaii: lat 18-23, lon -162 to -154
     const safeAirports = useMemo(() =>
         airports.filter(a => {
             const { lat, lon } = a;
@@ -185,13 +189,18 @@ function FlightMapInner({ airports, routes }: FlightMapProps) {
     );
 
     const handleMouseMove = useCallback((e: React.MouseEvent) => {
-        setMousePos({ x: e.clientX, y: e.clientY });
+        if (containerRef.current) {
+            const rect = containerRef.current.getBoundingClientRect();
+            setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+            setContainerWidth(rect.width);
+        }
     }, []);
 
     if (safeAirports.length === 0) return null;
 
     return (
         <div
+            ref={containerRef}
             className="chart-card animate-enter-d2"
             style={{ position: "relative", overflow: "hidden" }}
             onMouseMove={handleMouseMove}
@@ -292,7 +301,7 @@ function FlightMapInner({ airports, routes }: FlightMapProps) {
             </ComposableMap>
 
             {/* Floating tooltip */}
-            <MapTooltip airport={hovered} pos={mousePos} />
+            <MapTooltip airport={hovered} pos={mousePos} containerWidth={containerWidth} />
 
             {/* Stats bar */}
             <div
