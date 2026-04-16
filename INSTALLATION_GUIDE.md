@@ -51,6 +51,9 @@ npm install
 cd ..
 ```
 
+> [!NOTE]  
+> If you encounter peer dependency conflicts (due to React 19), use `npm install --legacy-peer-deps` instead.
+
 ---
 
 ## ⚙️ Environment Configuration
@@ -97,7 +100,7 @@ pip install -r requirements.txt
 
 # 3. Update Frontend dependencies
 cd frontend
-npm install
+npm install --legacy-peer-deps
 cd ..
 ```
 
@@ -184,6 +187,9 @@ npm run dev
 | **Landing Page** | [http://localhost:3000](http://localhost:3000) |
 | **Predict Delays** | [http://localhost:3000/predict](http://localhost:3000/predict) |
 | **Analytics Dashboard** | [http://localhost:3000/dashboard](http://localhost:3000/dashboard) |
+
+The **Analytics Dashboard** includes an interactive **U.S. Airport Delay Map** with color-coded markers for 338 airports, route arcs for the top 10 most delayed routes, and hover tooltips — all powered by `react-simple-maps`.
+
 | **Sign In** | [http://localhost:3000/login](http://localhost:3000/login) |
 | **API Documentation** | [http://localhost:8000/docs](http://localhost:8000/docs) |
 
@@ -192,7 +198,7 @@ npm run dev
 ## 🛠️ Project Structure Overview
 
 - `backend/`: FastAPI REST API + Firebase auth endpoints.
-- `frontend/`: Next.js frontend with TypeScript, Vanilla CSS, and Firebase Auth.
+- `frontend/`: Next.js frontend with TypeScript, Vanilla CSS, Firebase Auth, and `react-simple-maps` for map visualizations.
 - `ml/`: Machine learning pipeline scripts.
 - `models/`: Pre-trained model artifacts (`.pkl`).
 - `data/`: Storage for raw and processed datasets.
