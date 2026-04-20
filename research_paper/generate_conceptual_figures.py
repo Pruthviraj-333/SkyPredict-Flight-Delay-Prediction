@@ -2,6 +2,13 @@ import os
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
+import matplotlib.axes
+import matplotlib.figure
+matplotlib.axes.Axes.set_title = lambda *args, **kwargs: None
+plt.title = lambda *args, **kwargs: None
+plt.suptitle = lambda *args, **kwargs: None
+matplotlib.figure.Figure.suptitle = lambda *args, **kwargs: None
+
 # Apply styling globally
 plt.style.use('seaborn-v0_8-paper')
 
@@ -33,7 +40,7 @@ def generate_data_flow():
     
     # Bubbles for Data Sources
     draw_bubble(ax, 2, 5.2, 1.25, "BTS Data\n(US DOT)\nHistorical delays", "#1565C0")
-    draw_bubble(ax, 2, 1.8, 1.25, "NOAA Feeds\n(METAR)\nReal-time weather", "#00838F")
+    draw_bubble(ax, 2, 1.8, 1.25, "Open-Meteo API\n(Forecasts)\nReal-time weather", "#00838F")
     
     # Process box
     draw_box(ax, 5.5, 3.5, 2.8, 1.8, "Preprocessing\nMapping Engine", "#4527A0", fontsize=12)
@@ -54,7 +61,7 @@ def generate_data_flow():
     # Connect threshold
     ax.plot([5.5, 5.5], [5.2, 4.4], ls='--', color="#FFB74D", lw=3, zorder=2)
     
-    plt.title("Figure 3: Data Flow (BTS & NOAA Merge Integration)", fontsize=16, fontweight="bold", pad=15)
+    plt.title("Figure 3: Data Flow (BTS & Open-Meteo API Integration)", fontsize=16, fontweight="bold", pad=15)
     
     os.makedirs('figures', exist_ok=True)
     out_path = 'figures/fig3_data_flow_bubble_diagram.png'

@@ -3,14 +3,20 @@
 ## 1. Data Source
 - **Primary Dataset**: United States Department of Transportation (DOT) Bureau of Transportation Statistics (BTS) "On-Time Performance" dataset.
 - **Scale**: ~600,000 records (e.g., Oct 2025).
-- **External Data**: NOAA/AviationWeather.gov integration for real-time METAR-based weather features at 346 US airports.
+- **External Data**: Open-Meteo Forecast API integration for real-time weather features at US airports.
 
-## 2. Feature Engineering (110 Total)
-- **Temporal (15)**: Cyclical Day-of-Week/Hour-of-Day (Sine/Cosine), Month, Holiday flags (Near-Holiday window ±3 days).
-- **Categorical (10)**: Carrier, Origin, Destination, Tail Number (Carrier-encoded).
-- **Historical Aggregates (45)**: Mean delay rates by Hour, Day, Carrier, Origin, and Route (Interaction Terms).
-- **Weather (25)**: Visibility, Temperature, Wind Speed, Precipitation intensity, and specific flags (Snow/Fog/Thunderstorm) at both Origin and Destination.
-- **Complexity Proxies (15)**: Airport daily flight volume, individual plane (Tail Number) utilization rate.
+## 2. Feature Engineering
+The framework utilizes a Dual-Model strategy where the feature matrix strictly aligns to the deployed model signatures (`.pkl`):
+- **Fallback Model**: 50 Base Features.
+- **Primary Model**: 70 Total Features (50 Base + 20 Weather).
+
+Feature breakdown:
+- **Base Temporal & Cyclical (15)**: Cyclical Day-of-Week/Hour-of-Day (Sine/Cosine), Month, Time Blocks.
+- **Flight Characteristics & Categorical (8)**: Distance, Elapsed Time, Target-Encoded Carrier/Origin/Dest.
+- **Peak Travel & Holidays (9)**: Near-Holiday window, Weekend flags, Red-eye markers, Peak-hour indicators.
+- **Congestion & Utilization (3)**: Airport daily flight volume, Tail Number operational proxy.
+- **Historical Aggregates (15)**: Multi-level mean delay rates (L1 and L2 interactions) by Hour, Day, Carrier, Origin, and specific Routes.
+- **Weather Metrics (20)**: Origin/Dest Temperature, Visibility, Wind Speed, Precipitation, Cloud Cover, WMO Weather Codes, and binary "Bad Weather" flags.
 
 ## 3. Model Architecture
 - **Algorithm**: XGBoost Regressor (e-Xtreme Gradient Boosting).

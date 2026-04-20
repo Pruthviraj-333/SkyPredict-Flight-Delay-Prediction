@@ -7,12 +7,13 @@ uvicorn[standard]==0.30.0
 
 # Machine learning
 xgboost==2.1.0
-scikit-learn==1.5.0
+scikit-learn==1.4.2
 lightgbm==4.5.0
 
 # Data processing
-pandas==2.2.0
-numpy==1.26.0
+numpy==1.26.4
+pandas==2.2.2
+joblib
 
 # HTTP
 requests==2.32.0

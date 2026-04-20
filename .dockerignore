@@ -1,0 +1,38 @@
+# ── Git & IDE ────────────────────
+.git
+.gitignore
+.vscode
+.idea
+
+# ── Frontend (deployed separately) ─
+frontend/
+
+# ── Python artifacts ─────────────
+__pycache__
+*.py[cod]
+*.pyo
+.eggs/
+*.egg-info/
+venv/
+.venv/
+env/
+
+# ── ML training scripts (not needed at runtime) ─
+ml/
+results/
+research_paper/
+docs/
+tmp/
+
+# ── Backup model files (save space) ─
+models/*_backup.pkl
+models/*_v1_backup.pkl
+
+# ── Misc ─────────────────────────
+*.log
+.DS_Store
+Thumbs.db
+.gemini/
+README.md
+INSTALLATION_GUIDE.md
+AZURE_DEPLOYMENT.md

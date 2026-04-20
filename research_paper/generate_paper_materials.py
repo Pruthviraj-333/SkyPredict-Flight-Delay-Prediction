@@ -19,6 +19,14 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
+import matplotlib.axes
+import matplotlib.figure
+matplotlib.axes.Axes.set_title = lambda *args, **kwargs: None
+plt.title = lambda *args, **kwargs: None
+plt.suptitle = lambda *args, **kwargs: None
+matplotlib.figure.Figure.suptitle = lambda *args, **kwargs: None
+
 import matplotlib.patches as mpatches
 import matplotlib.patheffects as pe
 from matplotlib.gridspec import GridSpec
@@ -311,7 +319,7 @@ ax.axis("off"); ax.set_xlim(0, 15); ax.set_ylim(0, 4.5)
 steps = [
     ("BTS Raw Data\n(Oct 2025 CSV)", "#546E7A"),
     ("Clean &\nFilter", "#1565C0"),
-    ("Feature\nEngineering\n(45 feat)", "#1565C0"),
+    ("Feature\nEngineering\n(70 feat)", "#1565C0"),
     ("Aggregate\nDelay Rates\n(L1 + L2)", "#1565C0"),
     ("Temporal\nSplit\n25/6 days", "#6A1B9A"),
     ("Optuna\nTuning\n75 trials", "#E65100"),
@@ -337,22 +345,22 @@ ax.set_title("Fig 2 — Machine Learning Pipeline Overview", fontsize=14, fontwe
 save(fig, "fig_02_ml_pipeline.png")
 
 # ── Fig 3: Feature Category Breakdown ────────────────────────────────────────
-cats = ["Base Temporal","Flight Characteristics","Cyclical Encodings",
-        "Season & Holiday","Peak Travel","Airport Congestion",
-        "L1 Delay Rates","L2 Interaction Rates","Categorical Encoded",
-        "Tail Utilization"]
-counts = [7, 5, 8, 3, 6, 2, 8, 7, 3, 1]
+cats = ["Base Temporal", "Flight Characteristics", "Cyclical Encodings", 
+        "Peak Travel / Holiday", "Congestion / Utilization", 
+        "Aggregate Delay Rates", "Categorical", "Weather Metrics"]
+counts = [7, 5, 8, 9, 3, 15, 3, 20]  # Total 70 features
+
 colors_f = plt.cm.Set2(np.linspace(0, 1, len(cats)))
 
 fig, ax = plt.subplots(figsize=(11, 6))
 bars = ax.barh(cats, counts, color=colors_f, edgecolor="white", linewidth=1.5, height=0.65)
 for bar, cnt in zip(bars, counts):
-    ax.text(bar.get_width() + 0.1, bar.get_y() + bar.get_height()/2,
+    ax.text(bar.get_width() + 0.3, bar.get_y() + bar.get_height()/2,
             f"{cnt}", va="center", fontsize=11, fontweight="bold")
 ax.set_xlabel("Number of Features", fontsize=12)
-ax.set_title("Fig 3 — Feature Engineering: Category Breakdown (45 Total Features)",
+ax.set_title("Fig 3 — Feature Engineering: Category Breakdown (70 Total Features)",
              fontsize=13, fontweight="bold")
-ax.set_xlim(0, 11)
+ax.set_xlim(0, 25)
 ax.axvline(x=np.mean(counts), color="red", linestyle="--", alpha=0.6, label=f"Mean = {np.mean(counts):.1f}")
 ax.legend()
 fig.tight_layout()

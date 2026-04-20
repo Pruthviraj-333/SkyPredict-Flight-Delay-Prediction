@@ -6,6 +6,14 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
+import matplotlib.axes
+import matplotlib.figure
+matplotlib.axes.Axes.set_title = lambda *args, **kwargs: None
+plt.title = lambda *args, **kwargs: None
+plt.suptitle = lambda *args, **kwargs: None
+matplotlib.figure.Figure.suptitle = lambda *args, **kwargs: None
+
 from matplotlib.collections import LineCollection
 from matplotlib.patches import Polygon
 

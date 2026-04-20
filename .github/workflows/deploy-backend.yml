@@ -1,0 +1,108 @@
+# ─────────────────────────────────────────────────────────────
+# SkyPredict Backend — Deploy to Azure App Service (Docker)
+# ─────────────────────────────────────────────────────────────
+# Triggers on push to main branch (backend changes only).
+# Builds the Docker image, pushes to Azure Container Registry,
+# and deploys to Azure App Service.
+#
+# Required GitHub Secrets:
+#   AZURE_CREDENTIALS          → Service principal JSON
+#   AZURE_CONTAINER_REGISTRY   → e.g., skypredict.azurecr.io
+#   ACR_USERNAME               → Registry username
+#   ACR_PASSWORD               → Registry password
+#   AZURE_WEBAPP_NAME          → App Service name (e.g., skypredict-api)
+#   AVIATIONSTACK_API_KEY      → Flight tracking API key
+# ─────────────────────────────────────────────────────────────
+
+name: Deploy Backend to Azure
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'models/**'
+      - 'data/**'
+      - 'Dockerfile'
+      - 'requirements.txt'
+  workflow_dispatch:  # Allow manual trigger
+
+env:
+  IMAGE_NAME: skypredict-backend
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # ── Checkout code ────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true  # Pull Git LFS files (models)
+
+      # ── Login to Azure ───────────────────────────────────
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # ── Login to Azure Container Registry ────────────────
+      - name: Login to ACR
+        uses: azure/docker-login@v2
+        with:
+          login-server: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      # ── Build & Push Docker Image ────────────────────────
+      - name: Build and push Docker image
+        run: |
+          IMAGE_TAG=${{ secrets.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          IMAGE_LATEST=${{ secrets.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          
+          docker build -t $IMAGE_TAG -t $IMAGE_LATEST .
+          docker push $IMAGE_TAG
+          docker push $IMAGE_LATEST
+
+      # ── Deploy to Azure App Service ──────────────────────
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          images: ${{ secrets.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      # ── Set App Settings (Environment Variables) ─────────
+      - name: Configure App Settings
+        uses: azure/appservice-settings@v1
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          app-settings-json: |
+            [
+              { "name": "AVIATIONSTACK_API_KEY", "value": "${{ secrets.AVIATIONSTACK_API_KEY }}" },
+              { "name": "WEBSITES_PORT", "value": "8000" },
+              { "name": "PYTHON_ENABLE_GUNICORN_MULTIWORKERS", "value": "false" }
+            ]
+
+      # ── Verify Deployment ────────────────────────────────
+      - name: Health Check
+        run: |
+          echo "Waiting for deployment to stabilize..."
+          sleep 60
+          
+          HEALTH_URL="https://${{ secrets.AZURE_WEBAPP_NAME }}.azurewebsites.net/api/health"
+          echo "Checking health at: $HEALTH_URL"
+          
+          for i in {1..5}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Health check passed!"
+              curl -s "$HEALTH_URL" | python3 -m json.tool
+              exit 0
+            fi
+            echo "Attempt $i: HTTP $STATUS — retrying in 30s..."
+            sleep 30
+          done
+          
+          echo "⚠️ Health check didn't pass after 5 attempts (app may still be starting up)"
+          exit 0  # Don't fail the workflow — cold start can be slow

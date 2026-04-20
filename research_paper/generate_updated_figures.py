@@ -2,6 +2,14 @@ import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+
+import matplotlib.axes
+import matplotlib.figure
+matplotlib.axes.Axes.set_title = lambda *args, **kwargs: None
+plt.title = lambda *args, **kwargs: None
+plt.suptitle = lambda *args, **kwargs: None
+matplotlib.figure.Figure.suptitle = lambda *args, **kwargs: None
+
 import seaborn as sns
 
 # Set publication-ready styles
