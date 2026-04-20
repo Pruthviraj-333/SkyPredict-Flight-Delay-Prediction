@@ -20,7 +20,7 @@ import {
     signOut,
     type User,
 } from "firebase/auth";
-import { auth, googleProvider } from "./firebase";
+import { getFirebaseAuth, googleProvider } from "./firebase";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -71,6 +71,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Listen for auth state changes
     useEffect(() => {
+        const auth = getFirebaseAuth();
+        if (!auth) {
+            // SSR or Firebase not available — skip listener
+            setLoading(false);
+            return;
+        }
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             setUser(firebaseUser);
             if (firebaseUser) {
@@ -83,6 +89,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Google Sign-In
     const signInWithGoogle = useCallback(async () => {
+        const auth = getFirebaseAuth();
+        if (!auth) return;
         setError(null);
         try {
             await signInWithPopup(auth, googleProvider);
@@ -97,6 +105,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Sign out
     const logout = useCallback(async () => {
+        const auth = getFirebaseAuth();
+        if (!auth) return;
         setError(null);
         try {
             await signOut(auth);
@@ -114,3 +124,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         </AuthContext.Provider>
     );
 }
+

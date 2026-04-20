@@ -2,11 +2,14 @@
  * SkyPredict — Firebase client initialization.
  *
  * Config is loaded from environment variables prefixed with NEXT_PUBLIC_FIREBASE_.
- * Set these in frontend/.env.local (or Vercel dashboard for production).
+ * Set these in frontend/.env.local (or Azure SWA configuration for production).
+ *
+ * Initialization is LAZY and CLIENT-ONLY to avoid errors during
+ * Next.js static page prerendering (SSR).
  */
 
-import { initializeApp, getApps } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider, type Auth } from "firebase/auth";
 
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
@@ -17,9 +20,17 @@ const firebaseConfig = {
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "",
 };
 
-// Initialize Firebase only once
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-const auth = getAuth(app);
-const googleProvider = new GoogleAuthProvider();
+/** Returns the Firebase app instance (client-only, null during SSR). */
+export function getFirebaseApp(): FirebaseApp | null {
+    if (typeof window === "undefined") return null;
+    return getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+}
 
-export { app, auth, googleProvider };
+/** Returns the Firebase Auth instance (client-only, null during SSR). */
+export function getFirebaseAuth(): Auth | null {
+    const app = getFirebaseApp();
+    if (!app) return null;
+    return getAuth(app);
+}
+
+export const googleProvider = new GoogleAuthProvider();
